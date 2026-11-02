@@ -1,0 +1,14 @@
+# Perfil do MODO DEMONSTRAÇÃO (DemonstracaoPdvWebApi). Credenciais fictícias, só para apresentação local.
+pdv:
+  jwt:
+    segredo: chave-exclusiva-do-modo-demonstracao-nao-usar-em-producao-123456
+  admin:
+    cpf: "11144477735"
+    nome: Gerente Demonstração
+    senha: Gerente@Demo1
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

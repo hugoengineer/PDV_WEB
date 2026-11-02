@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Tecnologias — PDV Web</title><link rel="stylesheet" href="estilo.css"></head>
+<body>
+<div class="doc-cabecalho">
+  <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
+  <div class="titulo">Tecnologias</div>
+  <div class="resumo">Linguagem, frameworks, banco de dados, segurança, testes e infraestrutura do PDV Web — com versões exatas e o motivo de cada escolha.</div>
+</div>
+<table class="meta">
+  <tr><td>Documento</td><td>DOC-07 · Tecnologias</td><td>Versão</td><td>2.0 — 28/10/2026</td></tr>
+  <tr><td>Equipe</td><td colspan="3">Hugo de Oliveira Guimarães, Jean Wictor, Cesar Franco</td></tr>
+  <tr><td>Situação anterior</td><td colspan="3">O Plano de Projeto citava só Docker e AWS EC2; a Documentação do Projeto trazia o script do banco em <b>MySQL/MariaDB</b>. O sistema foi construído em <b>PostgreSQL</b> (ADR-001, decisão D-01). Este documento passa a ser a referência de tecnologias.</td></tr>
+  <tr><td>Fonte</td><td colspan="3"><code>pdv-web-api/pom.xml</code> e a árvore de dependências resolvida pelo Maven</td></tr>
+</table>
+
+<h1>1. Visão geral da arquitetura</h1>
+<p>O PDV Web é uma <b>API REST</b> em camadas, executada em container Docker numa instância AWS EC2, com banco PostgreSQL.
+O front-end (telas do Vendedor e do Gerente) consome essa API e é a próxima etapa do projeto.</p>
+<table>
+  <thead><tr><th style="width:24%">Camada</th><th>Responsabilidade</th><th style="width:34%">Tecnologia</th></tr></thead>
+  <tbody>
+    <tr><td>Front-end (próxima etapa)</td><td>Telas da frente de caixa e da gerência</td><td>A definir; consome a API via HTTPS/JSON</td></tr>
+    <tr><td>Segurança</td><td>Autenticação por token e autorização por perfil</td><td>Spring Security (OAuth2 Resource Server, JWT)</td></tr>
+    <tr><td>API (controllers)</td><td>Rotas REST, validação de entrada, erros RFC 7807</td><td>Spring Web MVC, Bean Validation, Jackson</td></tr>
+    <tr><td>Serviços</td><td>Regras de negócio, transações, auditoria</td><td>Spring (transações declarativas)</td></tr>
+    <tr><td>Persistência</td><td>Acesso a dados, consultas e bloqueios</td><td>Spring Data JPA, Hibernate, HikariCP</td></tr>
+    <tr><td>Banco de dados</td><td>Armazenamento e restrições de integridade</td><td>PostgreSQL 17 + Flyway</td></tr>
+    <tr><td>Infraestrutura</td><td>Empacotamento e execução</td><td>Docker, Docker Compose, AWS EC2</td></tr>
+  </tbody>
+</table>
+
+<h1>2. Backend (<code>pdv-web-api</code>)</h1>
+<table>
+  <thead><tr><th style="width:24%">Tecnologia</th><th style="width:13%">Versão</th><th>Uso no projeto e motivo da escolha</th></tr></thead>
+  <tbody>
+    <tr><td><b>Java</b> (OpenJDK)</td><td>25</td><td>Linguagem do projeto (mesma do sistema desktop original). Versão de suporte longo (LTS); usa <i>records</i> e <i>pattern matching</i>.</td></tr>
+    <tr><td><b>Spring Boot</b></td><td>4.1.2</td><td>Base da aplicação: configuração automática, servidor embutido e integração entre os módulos abaixo.</td></tr>
+    <tr><td>Spring Framework</td><td>7.0.10</td><td>Injeção de dependências, transações declarativas e Web MVC.</td></tr>
+    <tr><td>Spring Web MVC + Tomcat</td><td>Tomcat 11.0.27</td><td>Servidor HTTP embutido e controllers REST.</td></tr>
+    <tr><td>Spring Security</td><td>7.1.2</td><td>Autenticação stateless por JWT, autorização por perfil em duas camadas e BCrypt para senhas.</td></tr>
+    <tr><td>Nimbus JOSE + JWT</td><td>10.9.1</td><td>Assinatura e validação dos tokens JWT (HS256), usada pelo Spring Security.</td></tr>
+    <tr><td>springdoc-openapi</td><td>3.2.0</td><td>Documentação interativa da API (Swagger UI em <code>/swagger-ui.html</code> e OpenAPI em <code>/v3/api-docs</code>), ligada só quando <code>PDV_DOCUMENTACAO_API=true</code>.</td></tr>
+    <tr><td>Spring Data JPA + Hibernate ORM</td><td>Hibernate 7.4.13</td><td>Mapeamento das tabelas, consultas com filtros e bloqueio de linha (<code>SELECT … FOR UPDATE</code>) na venda.</td></tr>
+    <tr><td>Jakarta Persistence</td><td>3.2.0</td><td>Padrão de anotações das entidades.</td></tr>
+    <tr><td>Hibernate Validator (Bean Validation)</td><td>9.1.5</td><td>Validação declarativa dos dados de entrada, com mensagens em português.</td></tr>
+    <tr><td>Jackson</td><td>3.1.7</td><td>JSON em <code>snake_case</code> e datas ISO-8601, conforme o contrato da API v2.3.</td></tr>
+    <tr><td>HikariCP</td><td>7.0.2</td><td>Pool de conexões com o banco.</td></tr>
+    <tr><td>Flyway</td><td>12.4.0</td><td>Criação e versionamento do esquema do banco (migrações V1 e V2) na subida da aplicação.</td></tr>
+    <tr><td>Driver JDBC PostgreSQL</td><td>42.7.14</td><td>Conexão com o banco.</td></tr>
+    <tr><td>Spring Boot Actuator</td><td>4.1.2</td><td>Endpoint de saúde (<code>/actuator/health</code>) para o balanceador e o monitoramento.</td></tr>
+  </tbody>
+</table>
+
+<h1>3. Banco de dados</h1>
+<table>
+  <tbody>
+    <tr><td style="width:24%"><b>SGBD</b></td><td>PostgreSQL 17</td></tr>
+    <tr><td><b>Por que PostgreSQL</b></td><td>Já era o banco do sistema desktop; oferece <code>CHECK</code>, índice único parcial (um caixa aberto por operador), <code>TIMESTAMPTZ</code>, <code>NUMERIC</code> exato e bloqueio de linha confiável para vendas concorrentes.</td></tr>
+    <tr><td><b>Valores monetários</b></td><td><code>NUMERIC(10,2)</code> no banco e <code>BigDecimal</code> no Java — nunca ponto flutuante.</td></tr>
+    <tr><td><b>Esquema</b></td><td>Versionado pelo Flyway em <code>src/main/resources/db/migration</code>. Ver Diagrama ER (DOC-05) e Dicionário de Dados (DOC-06).</td></tr>
+  </tbody>
+</table>
+
+<h1>4. Testes e qualidade</h1>
+<table>
+  <thead><tr><th style="width:24%">Ferramenta</th><th style="width:13%">Versão</th><th>Uso</th></tr></thead>
+  <tbody>
+    <tr><td>JUnit Jupiter</td><td>6.0.3</td><td>Execução dos testes unitários, de integração e parametrizados</td></tr>
+    <tr><td>Mockito</td><td>5.23.0</td><td>Simulação de dependências nos testes unitários de serviço</td></tr>
+    <tr><td>AssertJ</td><td>3.27.7</td><td>Asserções legíveis</td></tr>
+    <tr><td>Spring Boot Test / MockMvc</td><td>4.1.2</td><td>Testes da camada HTTP e da aplicação completa</td></tr>
+    <tr><td>Spring Security Test</td><td>7.1.2</td><td>Simulação de usuários e perfis nos testes de API</td></tr>
+    <tr><td>Zonky Embedded PostgreSQL</td><td>2.2.2 (binários 17.11)</td><td>PostgreSQL real nos testes de integração, sem Docker nem instalação</td></tr>
+    <tr><td>Cucumber</td><td>7.34.9</td><td>Cenários BDD escritos em Gherkin (português) e executados contra a API</td></tr>
+    <tr><td>JaCoCo</td><td>0.8.15</td><td>Cobertura de código; o build falha abaixo de 80% de linhas ou 70% de ramos</td></tr>
+    <tr><td>PIT (Pitest)</td><td>1.30.1</td><td>Teste de mutação — mede se os testes detectam erros inseridos no código</td></tr>
+    <tr><td>Maven Surefire</td><td>(gerenciado pelo Spring Boot)</td><td>Execução dos testes e relatórios XML/HTML</td></tr>
+  </tbody>
+</table>
+
+<h1>5. Build, infraestrutura e ferramentas</h1>
+<table>
+  <thead><tr><th style="width:24%">Tecnologia</th><th style="width:13%">Versão</th><th>Uso</th></tr></thead>
+  <tbody>
+    <tr><td>Apache Maven (via Maven Wrapper)</td><td>3.9.16 / 3.3.4</td><td>Build e dependências; o wrapper dispensa instalar o Maven</td></tr>
+    <tr><td>Docker</td><td>—</td><td>Imagem em duas etapas (build com JDK 25, execução com JRE 25), usuário sem privilégios</td></tr>
+    <tr><td>Docker Compose</td><td>—</td><td>Sobe API + PostgreSQL com um comando; configuração por variáveis de ambiente (<code>.env</code>)</td></tr>
+    <tr><td>AWS EC2</td><td>—</td><td>Hospedagem prevista em nuvem (Plano de Projeto 1.7)</td></tr>
+    <tr><td>Git</td><td>—</td><td>Controle de versão; <code>.gitattributes</code> garante fim de linha LF nos scripts</td></tr>
+    <tr><td>GitHub Actions</td><td>—</td><td>Integração contínua em Linux (Ubuntu + JDK 25): roda toda a bateria e publica os relatórios a cada push (<code>.github/workflows/ci.yml</code>)</td></tr>
+    <tr><td>IntelliJ IDEA</td><td>2026.2</td><td>IDE de desenvolvimento</td></tr>
+  </tbody>
+</table>
+<div class="nota"><b>Situação:</b> o Dockerfile e o docker-compose foram escritos, mas ainda não foram executados (não havia Docker no ambiente de desenvolvimento). A validação está no roteiro de testes (RT-DEP-01 a 05). A API já foi executada como servidor HTTP real no <b>modo demonstração</b> (<code>demo.sh</code> / <code>demo.cmd</code>, com PostgreSQL embarcado e dados de exemplo).</div>
+
+<h1>6. Padrões e convenções adotados</h1>
+<table>
+  <tbody>
+    <tr><td style="width:24%"><b>Estilo da API</b></td><td>REST com JSON; contrato definido na Documentação da API v2.3</td></tr>
+    <tr><td><b>Formato de erro</b></td><td>RFC 7807 (Problem Details) com <code>type</code>, <code>title</code>, <code>status</code>, <code>detail</code> e <code>invalid_params</code></td></tr>
+    <tr><td><b>Autenticação</b></td><td>JWT Bearer (RFC 7519), validade de 24 h, revogação no logout</td></tr>
+    <tr><td><b>Senhas</b></td><td>BCrypt (fator 10)</td></tr>
+    <tr><td><b>Organização do código</b></td><td>Por módulo de negócio (<code>venda</code>, <code>caixa</code>, <code>produto</code>…) e camadas (controller → serviço → repositório)</td></tr>
+    <tr><td><b>Decisões de arquitetura</b></td><td>Registradas em ADR (<code>docs/arquitetura/ADR-001</code>)</td></tr>
+    <tr><td><b>Documentação de testes</b></td><td>IEEE 829 / ISO/IEC/IEEE 29119-3</td></tr>
+  </tbody>
+</table>
+
+<h1>7. Sistema desktop legado (<code>SistemaVendasEmpresa</code>)</h1>
+<p>Versão anterior do projeto, mantida como referência e substituída pelo PDV Web.</p>
+<table>
+  <thead><tr><th style="width:24%">Tecnologia</th><th style="width:13%">Versão</th><th>Uso</th></tr></thead>
+  <tbody>
+    <tr><td>Java</td><td>25</td><td>Linguagem</td></tr>
+    <tr><td>JavaFX (Controls, FXML)</td><td>21</td><td>Interface gráfica desktop</td></tr>
+    <tr><td>JDBC + driver PostgreSQL</td><td>42.7.2</td><td>Acesso direto ao banco</td></tr>
+    <tr><td>Gson</td><td>2.10.1</td><td>Leitura do JSON da consulta de CNPJ (BrasilAPI)</td></tr>
+    <tr><td>Maven + javafx-maven-plugin</td><td>0.0.8</td><td>Build e execução (<code>mvnw javafx:run</code>)</td></tr>
+  </tbody>
+</table>
+</body></html>

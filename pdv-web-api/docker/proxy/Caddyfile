@@ -1,0 +1,20 @@
+# Proxy TLS na frente da API (serviço "proxy", perfil "tls" do docker-compose.yml).
+# PDV_DOMINIO=localhost  -> certificado da CA interna do Caddy (testes nesta máquina)
+# PDV_DOMINIO=pdv.exemplo.com.br -> certificado Let's Encrypt emitido e renovado sozinho
+#   (o DNS deve apontar para o servidor e as portas 80/443 devem estar abertas)
+{
+	# Dentro do container não há loja de certificados do sistema para instalar a CA local
+	skip_install_trust
+}
+
+{$PDV_DOMINIO} {
+	encode gzip
+	# O Caddy envia X-Forwarded-For/Proto/Host próprios (descarta os que vierem do cliente)
+	reverse_proxy api:8080
+}
+
+# HTTP também chega à API, que responde com o redirecionamento para HTTPS (PDV_EXIGIR_HTTPS=true).
+# Assim a regra fica testada na aplicação, não só no proxy.
+http://{$PDV_DOMINIO} {
+	reverse_proxy api:8080
+}

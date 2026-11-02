@@ -1,0 +1,139 @@
+# Ambiente completo (PostgreSQL + API + backup) - mesmo arranjo previsto para a instância AWS EC2.
+# Primeira vez:  bash scripts/criar-env.sh   (gera o .env com senhas fortes)
+# Subir:         docker compose up -d --build
+# Detalhes:      docker/README.md
+name: pdv-web
+
+services:
+  banco:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pdv_web
+      POSTGRES_USER: ${DB_ADMIN_USER}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD}
+      # Checksums detectam corrupção silenciosa de páginas; senhas sempre com SCRAM-SHA-256
+      POSTGRES_INITDB_ARGS: "--data-checksums --auth-host=scram-sha-256 --auth-local=scram-sha-256"
+      DB_MIGRACAO_PASSWORD: ${DB_MIGRACAO_PASSWORD}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      TZ: America/Sao_Paulo
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - max_connections=100
+      - -c
+      - timezone=America/Sao_Paulo
+      - -c
+      - log_min_duration_statement=1000   # registra consultas acima de 1 s
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - checkpoint_timeout=10min
+    volumes:
+      - dados-postgres:/var/lib/postgresql/data
+      - ./docker/postgres/01-papeis.sh:/docker-entrypoint-initdb.d/01-papeis.sh:ro
+      - ./docker/postgres/papeis.sql:/docker-entrypoint-initdb.d/papeis.sql.inc:ro
+    # Só acessível desta máquina (DBeaver, pgAdmin, psql); nunca exposto na rede
+    ports:
+      - "127.0.0.1:5432:5432"
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER} -d pdv_web"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 60s
+    logging: &logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      banco:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://banco:5432/pdv_web
+      # A API usa um papel sem permissão de alterar a estrutura do banco...
+      DB_USER: pdv_app
+      DB_PASSWORD: ${DB_APP_PASSWORD}
+      # ...e as migrações rodam com o dono do esquema
+      SPRING_FLYWAY_URL: jdbc:postgresql://banco:5432/pdv_web
+      SPRING_FLYWAY_USER: pdv_migracao
+      SPRING_FLYWAY_PASSWORD: ${DB_MIGRACAO_PASSWORD}
+      PDV_JWT_SEGREDO: ${PDV_JWT_SEGREDO}
+      PDV_ADMIN_CPF: ${PDV_ADMIN_CPF}
+      PDV_ADMIN_SENHA: ${PDV_ADMIN_SENHA}
+      PDV_COMISSAO_BASE: ${PDV_COMISSAO_BASE:-LIQUIDO}
+      PDV_EXIGIR_HTTPS: ${PDV_EXIGIR_HTTPS:-false}
+      PDV_DOCUMENTACAO_API: ${PDV_DOCUMENTACAO_API:-false}
+    # Só nesta máquina: de fora, o acesso é pelo proxy TLS (perfil "tls")
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      # A imagem não tem curl/wget: usa o /dev/tcp do bash. O X-Forwarded-Proto evita o redirecionamento
+      # para HTTPS quando PDV_EXIGIR_HTTPS=true (127.0.0.1 é proxy confiável para o Tomcat)
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health HTTP/1.0\\r\\nX-Forwarded-Proto: https\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    stop_grace_period: 30s
+    logging: *logs
+
+  backup:
+    image: postgres:17
+    restart: unless-stopped
+    depends_on:
+      banco:
+        condition: service_healthy
+    environment:
+      PGHOST: banco
+      PGUSER: ${DB_ADMIN_USER}
+      PGPASSWORD: ${DB_ADMIN_PASSWORD}
+      BACKUP_INTERVALO_HORAS: ${BACKUP_INTERVALO_HORAS:-24}
+      BACKUP_RETENCAO_DIAS: ${BACKUP_RETENCAO_DIAS:-7}
+      TZ: America/Sao_Paulo
+    entrypoint: ["bash", "/backup-periodico.sh"]
+    volumes:
+      - ./docker/backup/backup-periodico.sh:/backup-periodico.sh:ro
+      - ./backups:/backups
+    logging: *logs
+
+  # Proxy TLS: só sobe com o perfil "tls" (COMPOSE_PROFILES=tls no .env ou docker compose --profile tls)
+  proxy:
+    image: caddy:2.10
+    profiles: [tls]
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      PDV_DOMINIO: ${PDV_DOMINIO:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - ./docker/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificados emitidos ficam no volume: recriar o container não pede certificado novo
+      - dados-caddy:/data
+      - config-caddy:/config
+    logging: *logs
+
+volumes:
+  dados-postgres:
+  dados-caddy:
+  config-caddy:

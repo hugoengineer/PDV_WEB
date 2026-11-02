@@ -1,0 +1,1378 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Execução de Testes</title>
+<link rel="stylesheet" href="../estilo.css"></head><body>
+<div class="doc-cabecalho"><div class="projeto">PDV Web · Documentação de Testes</div><div class="titulo">Relatório de Execução de Testes</div></div>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Identificador</td>
+<td>REX-PDV-001 · versão 1.2 (Ciclo 1.1 — robustez, seção 11; Ciclo 1.2 — banco de dados, seção 12)</td>
+</tr>
+<tr>
+<td>Plano de origem</td>
+<td><a href="01-plano-de-testes.pdf">PT-PDV-001</a></td>
+</tr>
+<tr>
+<td>Item testado</td>
+<td><code>pdv-web-api</code> 2.3.0 (backend REST)</td>
+</tr>
+<tr>
+<td>Execução oficial — Ciclo 1</td>
+<td>26/10/2026, 15:31:32 – 15:33:35 · <code>./mvnw clean verify</code> · 1 min 59 s · 265/265</td>
+</tr>
+<tr>
+<td>Execução oficial — Ciclo 1.1</td>
+<td>28/10/2026, 11:09:32 – 11:12:26 · <code>./mvnw clean verify</code> · 2 min 50 s · 313/313</td>
+</tr>
+<tr>
+<td>Execução oficial — Ciclo 1.2 (banco)</td>
+<td><strong>28/10/2026, 11:49:26 – 11:53:05</strong> · <code>./mvnw clean verify</code> · 3 min 34 s · <strong>320/320</strong> (as evidências atuais são desta execução)</td>
+</tr>
+<tr>
+<td>Ambiente</td>
+<td>Windows 10 Pro · OpenJDK 25.0.3 · Maven 3.9.16 · Spring Boot 4.1.2 · PostgreSQL 17 embarcado (<a href="01-plano-de-testes.pdf">Plano, seção 8</a>)</td>
+</tr>
+<tr>
+<td>Evidências</td>
+<td><a href="evidencias/">evidencias/</a> — lista de casos executados, cobertura, desempenho e relatório BDD</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>1. Resumo executivo</h2>
+<blockquote>
+<p><strong>Atualização de 28/10/2026 — Ciclo 1.1 (robustez).</strong> As seções 1 a 9 registram o Ciclo 1 como foi executado.
+O Ciclo 1.1 corrigiu os riscos residuais da seção 7 (4 defeitos: DEF-WEB-003 a 006), criou <strong>37 casos novos</strong> e
+terminou com <strong>313/313 execuções aprovadas</strong>, cobertura de <strong>96,8% das linhas e 87,6% dos ramos</strong> e força de mutação
+de <strong>100% em 12 classes</strong>. Detalhes na <a href="#11-ciclo-11--robustez">seção 11</a>. O <strong>Ciclo 1.2</strong> endureceu o banco de dados
+(gatilhos de imutabilidade, papéis com menor privilégio, Docker com backup): <strong>320/320</strong> — <a href="#12-ciclo-12--banco-de-dados">seção 12</a>.</p>
+</blockquote>
+<p>O Ciclo 1 executou <strong>todos os 211 casos automatizados planejados</strong> (195 casos CT e 16 cenários BDD), que somam
+<strong>265 execuções</strong>. <strong>Todas foram aprovadas</strong> na regressão final. Ao longo do ciclo, os testes encontraram
+<strong>2 defeitos no produto</strong>, ambos de segurança (DEF-WEB-001 e DEF-WEB-002), e <strong>1 defeito num script de teste</strong>
+(DEF-TST-001). Os três foram corrigidos e retestados.</p>
+<p>Destaques:</p>
+<ul>
+<li><strong>Integridade de estoque comprovada sob concorrência:</strong> 20 vendas simultâneas do último lote de 5 unidades
+resultaram em exatamente 5 vendas e estoque 0.</li>
+<li><strong>Regras financeiras validadas com os exemplos oficiais:</strong> venda de R$ 215,00 com comissão de R$ 10,75;
+comissão acumulada de R$ 225,00; saldo de caixa de R$ 300,00.</li>
+<li><strong>Cobertura de código:</strong> 94,1% das linhas e 81,2% dos ramos.</li>
+<li><strong>Força dos testes unitários (teste de mutação):</strong> 100% dos mutantes cobertos foram detectados.</li>
+<li><strong>Desempenho:</strong> p95 máximo de 36 ms, contra o limite de 3.000 ms do VAL-07.</li>
+</ul>
+<p><strong>Todos os critérios de saída do ciclo foram atendidos</strong> (seção 6). <strong>Recomendação:</strong> o backend está apto para o
+Ciclo 2 (integração com o front-end), mas <strong>não deve ir para produção</strong> antes de concluir as pendências PEND-03,
+PEND-04, PEND-06 e PEND-07 (seção 8).</p>
+<h2>2. Escopo executado e desvios em relação ao plano</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Planejado</th>
+<th>Executado</th>
+<th>Desvio</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Casos automatizados (CT + BDD)</td>
+<td>211</td>
+<td>211</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Execuções automatizadas</td>
+<td>265</td>
+<td>265</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Itens manuais e exploratórios (<a href="07-roteiro-de-testes-manuais.pdf">roteiro</a>)</td>
+<td>16</td>
+<td>0</td>
+<td>Sem PostgreSQL com interface gráfica, sem Docker e sem sessão com testadores neste ambiente → PEND-01, 02, 03</td>
+</tr>
+<tr>
+<td>Reteste do desktop</td>
+<td>7 (RT-DSK)</td>
+<td>0 (só verificação de compilação)</td>
+<td>PEND-02</td>
+</tr>
+<tr>
+<td>Teste de mutação</td>
+<td>Regras de negócio</td>
+<td>11 classes</td>
+<td>Executado só com os testes unitários, por tempo (ver 5.3)</td>
+</tr>
+</tbody></table>
+<p>Casos novos criados durante o ciclo: <strong>CT-SEG-009</strong> (originado da análise de risco da sessão EXP-02) e
+<strong>CT-VEN-U18, CT-VEN-U19, CT-DOC-012</strong> (originados do teste de mutação).</p>
+<h2>3. Resultados por nível e suíte</h2>
+<h3>3.1 Por nível de teste</h3>
+<table>
+<thead>
+<tr>
+<th>Nível</th>
+<th>Casos distintos</th>
+<th>Execuções</th>
+<th>Aprovadas</th>
+<th>Reprovadas</th>
+<th>Taxa de aprovação</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Unitário (JUnit 6 + Mockito)</td>
+<td>65</td>
+<td>96</td>
+<td>96</td>
+<td>0</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>Componente / contrato HTTP (WebMvcTest)</td>
+<td>12</td>
+<td>12</td>
+<td>12</td>
+<td>0</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>Integração e sistema (Spring Boot + PostgreSQL)</td>
+<td>118</td>
+<td>139</td>
+<td>139</td>
+<td>0</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>Aceitação BDD (Cucumber / Gherkin)</td>
+<td>16</td>
+<td>18</td>
+<td>18</td>
+<td>0</td>
+<td>100%</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>211</strong></td>
+<td><strong>265</strong></td>
+<td><strong>265</strong></td>
+<td><strong>0</strong></td>
+<td><strong>100%</strong></td>
+</tr>
+</tbody></table>
+<h3>3.2 Por suíte</h3>
+<table>
+<thead>
+<tr>
+<th>Suíte</th>
+<th>Execuções</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Validação de CPF/CNPJ (Documentos)</td>
+<td>21</td>
+<td>21 ✅</td>
+</tr>
+<tr>
+<td>Cálculo financeiro da venda (CalculadoraVenda)</td>
+<td>15</td>
+<td>15 ✅</td>
+</tr>
+<tr>
+<td>Regras do produto e estoque</td>
+<td>14</td>
+<td>14 ✅</td>
+</tr>
+<tr>
+<td>Paginação e convenções do contrato</td>
+<td>11</td>
+<td>11 ✅</td>
+</tr>
+<tr>
+<td>Regras do cupom de desconto</td>
+<td>10</td>
+<td>10 ✅</td>
+</tr>
+<tr>
+<td>Serviço de vendas (Mockito)</td>
+<td>10</td>
+<td>10 ✅</td>
+</tr>
+<tr>
+<td>Transições de estado de Caixa e Venda</td>
+<td>7</td>
+<td>7 ✅</td>
+</tr>
+<tr>
+<td>Serviço de autenticação (Mockito)</td>
+<td>4</td>
+<td>4 ✅</td>
+</tr>
+<tr>
+<td>Serviço de caixa (Mockito)</td>
+<td>4</td>
+<td>4 ✅</td>
+</tr>
+<tr>
+<td>Contrato HTTP de /produtos (WebMvcTest)</td>
+<td>12</td>
+<td>12 ✅</td>
+</tr>
+<tr>
+<td>Produtos e estoque (integração)</td>
+<td>23</td>
+<td>23 ✅</td>
+</tr>
+<tr>
+<td>Registro de vendas + Exemplos das Regras de Sistema (integração)</td>
+<td>20</td>
+<td>20 ✅</td>
+</tr>
+<tr>
+<td>Segurança e controle de acesso (integração)</td>
+<td>17</td>
+<td>17 ✅</td>
+</tr>
+<tr>
+<td>Controle de caixa (integração)</td>
+<td>12</td>
+<td>12 ✅</td>
+</tr>
+<tr>
+<td>Cancelamento, histórico e comissões (integração)</td>
+<td>12</td>
+<td>12 ✅</td>
+</tr>
+<tr>
+<td>Clientes (integração)</td>
+<td>11</td>
+<td>11 ✅</td>
+</tr>
+<tr>
+<td>Autenticação e sessão (integração)</td>
+<td>9</td>
+<td>9 ✅</td>
+</tr>
+<tr>
+<td>Usuários e funcionários (integração)</td>
+<td>9</td>
+<td>9 ✅</td>
+</tr>
+<tr>
+<td>Cupons de desconto (integração)</td>
+<td>6</td>
+<td>6 ✅</td>
+</tr>
+<tr>
+<td>Integridade do banco de dados (integração)</td>
+<td>5</td>
+<td>5 ✅</td>
+</tr>
+<tr>
+<td>Auditoria (integração)</td>
+<td>4</td>
+<td>4 ✅</td>
+</tr>
+<tr>
+<td>Concorrência de vendas e cancelamentos (integração)</td>
+<td>4</td>
+<td>4 ✅</td>
+</tr>
+<tr>
+<td>Desempenho — VAL-07 (integração)</td>
+<td>4</td>
+<td>4 ✅</td>
+</tr>
+<tr>
+<td>Smoke test</td>
+<td>3</td>
+<td>3 ✅</td>
+</tr>
+<tr>
+<td>Cenários BDD (Gherkin)</td>
+<td>18</td>
+<td>18 ✅ (130/130 passos)</td>
+</tr>
+</tbody></table>
+<p>O resultado individual de cada caso, com tempo de execução, está em <a href="evidencias/casos-executados.tsv">evidencias/casos-executados.tsv</a>.</p>
+<h2>4. Histórico das execuções do ciclo</h2>
+<p>Cada problema encontrado foi analisado, corrigido e seguido de reteste do bloco e da regressão completa (Tutorial, etapa 7).</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Execução</th>
+<th>Resultado</th>
+<th>Ação</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>E1</td>
+<td>Smoke test (subida da aplicação + banco embarcado)</td>
+<td>3/3</td>
+<td>Ambiente validado</td>
+</tr>
+<tr>
+<td>E2</td>
+<td>Unitários</td>
+<td>93/93</td>
+<td>—</td>
+</tr>
+<tr>
+<td>E3</td>
+<td>Contrato HTTP (WebMvcTest)</td>
+<td><strong>12 erros</strong> — contexto não inicializou</td>
+<td>INC-01 (dependência de teste do Spring Boot 4) → 12/12</td>
+</tr>
+<tr>
+<td>E4</td>
+<td>Autenticação + segurança</td>
+<td>25 executados, <strong>5 falhas</strong> (CT-SEG-005)</td>
+<td><strong>DEF-WEB-001</strong> corrigido → reteste 28/28</td>
+</tr>
+<tr>
+<td>E5</td>
+<td>Cadastros (produtos, clientes, cupons, usuários) + segurança</td>
+<td>65/65</td>
+<td>—</td>
+</tr>
+<tr>
+<td>E6</td>
+<td>Caixa, vendas, cancelamento, comissões, auditoria</td>
+<td>48/48</td>
+<td>—</td>
+</tr>
+<tr>
+<td>E7</td>
+<td>Concorrência, desempenho, banco</td>
+<td>13/13</td>
+<td>—</td>
+</tr>
+<tr>
+<td>E8</td>
+<td>BDD</td>
+<td>18 executados, <strong>3 falhas</strong> (BDD-DES R5–R7)</td>
+<td><strong>DEF-TST-001</strong> (script de teste) corrigido → 18/18</td>
+</tr>
+<tr>
+<td>E9</td>
+<td>Teste de mutação — rodadas 1 a 3</td>
+<td>Força 91,4% → 98,8% → <strong>100%</strong></td>
+<td>Lacunas MUT-01 a MUT-07 fechadas com casos novos e asserções reforçadas</td>
+</tr>
+<tr>
+<td>E10</td>
+<td>Regressão completa nº 1</td>
+<td>264/264</td>
+<td>—</td>
+</tr>
+<tr>
+<td>E11</td>
+<td>CT-SEG-009 (novo, da análise da sessão EXP-02)</td>
+<td><strong>1 falha</strong></td>
+<td><strong>DEF-WEB-002</strong> corrigido → reteste 47/47 (segurança, autenticação, usuários, contrato HTTP)</td>
+</tr>
+<tr>
+<td>E12</td>
+<td>Regressão completa nº 2 (14:21)</td>
+<td>265/265 · cobertura atendida · BUILD SUCCESS</td>
+<td>Evidências sobrescritas pela E13</td>
+</tr>
+<tr>
+<td>E13</td>
+<td><strong>Regressão completa final (oficial, 15:31)</strong></td>
+<td><strong>265/265</strong> · cobertura atendida · BUILD SUCCESS</td>
+<td>Base deste relatório e das evidências</td>
+</tr>
+</tbody></table>
+<h2>5. Métricas (Tutorial, seção 14)</h2>
+<h3>5.1 Execução e defeitos</h3>
+<table>
+<thead>
+<tr>
+<th>Métrica</th>
+<th>Cálculo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Taxa de aprovação (final)</td>
+<td>265 aprovados ÷ 265 executados × 100</td>
+<td><strong>100%</strong></td>
+</tr>
+<tr>
+<td>Taxa de reprovação (final)</td>
+<td>0 ÷ 265 × 100</td>
+<td>0%</td>
+</tr>
+<tr>
+<td>Casos automatizados executados</td>
+<td>211 ÷ 211</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>Casos planejados executados (inclui manuais)</td>
+<td>211 ÷ 227</td>
+<td>93,0%</td>
+</tr>
+<tr>
+<td>Falhas na primeira execução dos casos</td>
+<td>9 execuções em 5 casos/cenários: CT-SEG-005 (×5, DEF-WEB-001), BDD-DES R5–R7 (DEF-TST-001), CT-SEG-009 (DEF-WEB-002)</td>
+<td>9 ÷ 265 = 3,4%</td>
+</tr>
+<tr>
+<td>Defeitos encontrados no backend (produto)</td>
+<td>—</td>
+<td>2 (1 Alta, 1 Média)</td>
+</tr>
+<tr>
+<td>Defeitos no script de teste</td>
+<td>—</td>
+<td>1 (Baixa)</td>
+</tr>
+<tr>
+<td>Defeitos reabertos</td>
+<td>—</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Densidade de defeitos do backend</td>
+<td>2 defeitos ÷ 1,426 KLOC executáveis</td>
+<td>1,4 defeito/KLOC</td>
+</tr>
+<tr>
+<td>Cobertura de requisitos (completa)</td>
+<td>33 ÷ 39</td>
+<td>84,6%</td>
+</tr>
+<tr>
+<td>Cobertura de requisitos (≥ 1 caso aprovado)</td>
+<td>38 ÷ 39</td>
+<td>97,4% (100% do escopo do ciclo)</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>Como alerta o Tutorial: 100% de aprovação significa que <strong>os comportamentos cobertos</strong> funcionam, não que o sistema não tem defeitos.
+Por isso este relatório traz também a força dos testes (5.3) e os riscos residuais (seção 7).</p>
+</blockquote>
+<h3>5.2 Cobertura de código (JaCoCo)</h3>
+<table>
+<thead>
+<tr>
+<th>Contador</th>
+<th>Cobertos / total</th>
+<th>Percentual</th>
+<th>Meta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Instruções</td>
+<td>7.417 / 7.925</td>
+<td>93,6%</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Linhas</strong></td>
+<td>1.342 / 1.426</td>
+<td><strong>94,1%</strong></td>
+<td>≥ 80% ✅</td>
+</tr>
+<tr>
+<td><strong>Ramos (decisões)</strong></td>
+<td>346 / 426</td>
+<td><strong>81,2%</strong></td>
+<td>≥ 70% ✅</td>
+</tr>
+<tr>
+<td>Métodos</td>
+<td>473 / 514</td>
+<td>92,0%</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>Pacote</th>
+<th>Linhas</th>
+<th>Ramos</th>
+<th>Observação</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>venda</code></td>
+<td>98,9%</td>
+<td>90,5%</td>
+<td></td>
+</tr>
+<tr>
+<td><code>caixa</code></td>
+<td>98,1%</td>
+<td>100,0%</td>
+<td></td>
+</tr>
+<tr>
+<td><code>auth</code></td>
+<td>98,3%</td>
+<td>95,0%</td>
+<td></td>
+</tr>
+<tr>
+<td><code>comum</code></td>
+<td>100,0%</td>
+<td>92,9%</td>
+<td></td>
+</tr>
+<tr>
+<td><code>produto</code></td>
+<td>94,8%</td>
+<td>77,6%</td>
+<td></td>
+</tr>
+<tr>
+<td><code>seguranca</code></td>
+<td>94,8%</td>
+<td>68,2%</td>
+<td>⚠ abaixo da meta de ramos — limpeza da lista de revogação e caminhos de claim inválida</td>
+</tr>
+<tr>
+<td><code>auditoria</code></td>
+<td>94,6%</td>
+<td><strong>50,0%</strong></td>
+<td>⚠ filtros de data do <code>GET /auditoria</code> sem teste</td>
+</tr>
+<tr>
+<td><code>cupom</code></td>
+<td>93,3%</td>
+<td>71,1%</td>
+<td></td>
+</tr>
+<tr>
+<td><code>usuario</code></td>
+<td>87,7%</td>
+<td>79,4%</td>
+<td><code>InicializadorGerente</code>: caminhos de configuração inválida</td>
+</tr>
+<tr>
+<td><code>cliente</code></td>
+<td>87,3%</td>
+<td>72,1%</td>
+<td>PATCH trocando tipo/documento</td>
+</tr>
+<tr>
+<td><code>comum.erro</code></td>
+<td>85,9%</td>
+<td>70,0%</td>
+<td>Tratadores de erros raros (ex.: parâmetro obrigatório ausente)</td>
+</tr>
+<tr>
+<td><code>br.com.empresa.pdv</code></td>
+<td>33,3%</td>
+<td>—</td>
+<td>Só o método <code>main</code> (não executado em teste)</td>
+</tr>
+</tbody></table>
+<p>Arquivo completo: <a href="evidencias/cobertura-jacoco.csv">evidencias/cobertura-jacoco.csv</a>. HTML: <code>pdv-web-api/target/site/jacoco/index.html</code>.</p>
+<h3>5.3 Teste de mutação (PIT)</h3>
+<p>O PIT altera o código de produção (&quot;mutantes&quot;: troca <code>&lt;</code> por <code>&lt;=</code>, remove chamadas, inverte condições) e confere
+se algum teste falha. Mutante que sobrevive indica teste que não detectaria aquele erro.</p>
+<p>Escopo: 11 classes de regra de negócio (<code>CalculadoraVenda</code>, <code>Venda</code>, <code>VendaService</code>, <code>Caixa</code>, <code>CaixaService</code>,
+<code>Cupom</code>, <code>Produto</code>, <code>Documentos</code>, <code>Dinheiro</code>, <code>Paginacao</code>, <code>AuthService</code>), avaliadas pelos testes <strong>unitários</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Rodada</th>
+<th>Mortos</th>
+<th>Sobreviventes</th>
+<th>Sem cobertura unitária</th>
+<th>Força dos testes (mortos ÷ cobertos)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>148</td>
+<td>14</td>
+<td>112</td>
+<td>91,4%</td>
+</tr>
+<tr>
+<td>2</td>
+<td>163</td>
+<td>2</td>
+<td>109</td>
+<td>98,8%</td>
+</tr>
+<tr>
+<td>3 (final)</td>
+<td><strong>165</strong></td>
+<td><strong>0</strong></td>
+<td>109</td>
+<td><strong>100%</strong> ✅ (meta ≥ 80%)</td>
+</tr>
+</tbody></table>
+<ul>
+<li>As lacunas da rodada 1 estão em <a href="06-relatorio-de-defeitos.pdf">Defeitos, seção 5</a> (MUT-01 a MUT-07). A mais grave: remover a baixa de estoque da venda não reprovava nenhum teste unitário.</li>
+<li>Os 109 mutantes &quot;sem cobertura unitária&quot; ficam em fluxos testados só na integração (listagens, cancelamento, comissões, fechamento de caixa). O PIT não roda os testes de integração por custo de tempo. Escore sobre todos os mutantes gerados: 165 ÷ 274 = 60,2%.</li>
+<li>A correção do DEF-WEB-002 (feita depois das rodadas) não alterou nenhuma das 11 classes avaliadas.</li>
+</ul>
+<h3>5.4 Desempenho (VAL-07 — limite de 3.000 ms)</h3>
+<table>
+<thead>
+<tr>
+<th>Caso</th>
+<th>Operação</th>
+<th>Amostras</th>
+<th>Média</th>
+<th>Mediana</th>
+<th>p95</th>
+<th>Máximo</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-PERF-001</td>
+<td><code>GET /produtos</code> (1.000 produtos, limite 100)</td>
+<td>20</td>
+<td>23,4 ms</td>
+<td>23 ms</td>
+<td>34 ms</td>
+<td>42 ms</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CT-PERF-002</td>
+<td><code>GET /produtos?nome=…</code></td>
+<td>20</td>
+<td>12,8 ms</td>
+<td>13 ms</td>
+<td>15 ms</td>
+<td>15 ms</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CT-PERF-003</td>
+<td><code>POST /vendas</code> com 10 itens</td>
+<td>30</td>
+<td>26,8 ms</td>
+<td>26 ms</td>
+<td>36 ms</td>
+<td>46 ms</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CT-PERF-004</td>
+<td><code>GET /produtos/{id}</code></td>
+<td>30</td>
+<td>8,1 ms</td>
+<td>8 ms</td>
+<td>11 ms</td>
+<td>11 ms</td>
+<td>✅</td>
+</tr>
+</tbody></table>
+<p>Medição em ambiente local, sem rede entre cliente e servidor. A margem é grande (p95 98% abaixo do limite), mas não substitui
+o teste de carga na infraestrutura Docker/AWS (PEND-04). Fonte: <a href="evidencias/desempenho.csv">evidencias/desempenho.csv</a>.</p>
+<h3>5.5 Concorrência</h3>
+<table>
+<thead>
+<tr>
+<th>Caso</th>
+<th>Cenário</th>
+<th>Resultado obtido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-CONC-001</td>
+<td>20 vendas simultâneas de 1 unidade, estoque 5</td>
+<td>5 × 201, 15 × 422, estoque final 0, 5 vendas gravadas ✅</td>
+</tr>
+<tr>
+<td>CT-CONC-002</td>
+<td>2 cancelamentos simultâneos da mesma venda</td>
+<td>1 × 200, 1 × 422, estoque estornado uma única vez ✅</td>
+</tr>
+<tr>
+<td>CT-CONC-003</td>
+<td>5 sangrias simultâneas de R$ 30 com saldo de R$ 100</td>
+<td>3 aceitas (R$ 90), 2 rejeitadas ✅</td>
+</tr>
+<tr>
+<td>CT-CONC-004</td>
+<td>4 aberturas de caixa simultâneas pelo mesmo operador</td>
+<td>1 caixa criado ✅</td>
+</tr>
+</tbody></table>
+<h2>6. Avaliação dos critérios de saída</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Critério</th>
+<th>Meta</th>
+<th>Obtido</th>
+<th>Situação</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CS-1</td>
+<td>Casos P1 executados e aprovados</td>
+<td>100%</td>
+<td>100%</td>
+<td>✅ Atendido</td>
+</tr>
+<tr>
+<td>CS-2</td>
+<td>Taxa de aprovação geral</td>
+<td>≥ 95%</td>
+<td>100%</td>
+<td>✅ Atendido</td>
+</tr>
+<tr>
+<td>CS-3</td>
+<td>Defeitos Críticos/Altos abertos (backend)</td>
+<td>0</td>
+<td>0</td>
+<td>✅ Atendido</td>
+</tr>
+<tr>
+<td>CS-4</td>
+<td>Requisitos do escopo com ≥ 1 caso aprovado</td>
+<td>100%</td>
+<td>100% (38/38)</td>
+<td>✅ Atendido</td>
+</tr>
+<tr>
+<td>CS-5</td>
+<td>Cobertura de código</td>
+<td>≥ 80% linhas, ≥ 70% ramos</td>
+<td>94,1% / 81,2%</td>
+<td>✅ Atendido</td>
+</tr>
+<tr>
+<td>CS-6</td>
+<td>Tempo de resposta (p95)</td>
+<td>&lt; 3.000 ms</td>
+<td>máx. 36 ms</td>
+<td>✅ Atendido (ambiente local)</td>
+</tr>
+<tr>
+<td>CS-7</td>
+<td>Força dos testes unitários</td>
+<td>≥ 80%</td>
+<td>100%</td>
+<td>✅ Atendido</td>
+</tr>
+</tbody></table>
+<h2>7. Riscos residuais</h2>
+<table>
+<thead>
+<tr>
+<th>Risco</th>
+<th>Impacto</th>
+<th>Recomendação</th>
+<th>Situação após o Ciclo 1.1</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ramos pouco cobertos em <code>auditoria</code> (50%) e <code>seguranca</code> (68,2%)</td>
+<td>Médio</td>
+<td>Criar casos para os filtros de data da auditoria e para claims inválidas no token (Ciclo 2)</td>
+<td>✅ Tratado: <code>auditoria</code> 87,5%, <code>seguranca</code> 73,9%</td>
+</tr>
+<tr>
+<td>Revogação de tokens em memória</td>
+<td>Médio (com várias instâncias)</td>
+<td>Persistir a lista de revogação antes de escalar horizontalmente</td>
+<td>✅ Corrigido (DEF-WEB-003)</td>
+</tr>
+<tr>
+<td>Login sem limite de tentativas</td>
+<td>Médio (força bruta)</td>
+<td>Rate limiting / bloqueio temporário por CPF e IP</td>
+<td>✅ Corrigido (DEF-WEB-004 e DEF-WEB-005)</td>
+</tr>
+<tr>
+<td>Base de cálculo da comissão (líquido × bruto) não confirmada</td>
+<td>Alto (financeiro)</td>
+<td>Decisão da equipe (PEND-06); a mudança é localizada em <code>CalculadoraVenda</code></td>
+<td>✅ Configurável (<code>PDV_COMISSAO_BASE</code>); a equipe só escolhe o valor</td>
+</tr>
+<tr>
+<td>Desktop legado sem reteste funcional</td>
+<td>Baixo (o sistema será substituído)</td>
+<td>Executar RT-DSK-01 a 07 se o desktop continuar em uso</td>
+<td>Aberto (PEND-02)</td>
+</tr>
+</tbody></table>
+<h2>8. Pendências</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Pendência</th>
+<th>Responsável</th>
+<th>Bloqueia produção?</th>
+<th>Situação em 28/10/2026</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PEND-01</td>
+<td>Executar as sessões exploratórias EXP-01 a EXP-06</td>
+<td>Equipe de testes</td>
+<td>Não</td>
+<td>Aberta. O modo demonstração (<code>demo.cmd</code>/<code>demo.sh</code> + Swagger UI) já permite executá-las sem Docker</td>
+</tr>
+<tr>
+<td>PEND-02</td>
+<td>Reteste manual das correções do desktop (RT-DSK-01 a 07)</td>
+<td>Equipe</td>
+<td>Não</td>
+<td>Aberta</td>
+</tr>
+<tr>
+<td>PEND-03</td>
+<td>Subir com Docker Compose e executar RT-DEP-01 a 07</td>
+<td>Equipe / infraestrutura</td>
+<td><strong>Sim</strong></td>
+<td>Parcial: RT-DEP-01 a 07 <strong>aprovados no Docker</strong> em 28/10/2026 (DEF-WEB-007/008/009 corrigidos); falta repetir no servidor AWS</td>
+</tr>
+<tr>
+<td>PEND-04</td>
+<td>Teste de carga (JMeter) na instância AWS EC2 — VAL-07 no ambiente alvo</td>
+<td>Infraestrutura</td>
+<td><strong>Sim</strong></td>
+<td>Parcial: carga local com 20 operadores simultâneos aprovada (CT-PERF-005); falta o ambiente alvo</td>
+</tr>
+<tr>
+<td>PEND-05</td>
+<td>Executar a bateria num pipeline Linux (CI)</td>
+<td>Equipe</td>
+<td>Não</td>
+<td>Pipeline criado (<code>.github/workflows/ci.yml</code>, Ubuntu + JDK 25); roda no primeiro push ao GitHub</td>
+</tr>
+<tr>
+<td>PEND-06</td>
+<td>Confirmar a base de cálculo da comissão (ADR D-04 / DOC-04)</td>
+<td>Responsáveis pelo projeto</td>
+<td><del>Sim</del> Não</td>
+<td>✅ Resolvida por configuração (<code>PDV_COMISSAO_BASE</code>, padrão <code>LIQUIDO</code>)</td>
+</tr>
+<tr>
+<td>PEND-07</td>
+<td>Configurar HTTPS/TLS no ambiente (VAL-06)</td>
+<td>Infraestrutura</td>
+<td><strong>Sim</strong></td>
+<td>Parcial: proxy TLS (Caddy, perfil <code>tls</code>) pronto e aprovado localmente em RT-DEP-05; falta o domínio e o certificado Let&#39;s Encrypt na AWS</td>
+</tr>
+<tr>
+<td>PEND-08</td>
+<td>Implementar limite de tentativas de login</td>
+<td>Equipe</td>
+<td>Recomendado</td>
+<td>✅ Concluída (DEF-WEB-004/005)</td>
+</tr>
+</tbody></table>
+<h2>9. Conclusão</h2>
+<p>O backend do PDV Web cumpre, no ambiente de teste, as regras de negócio, as validações de estoque, caixa,
+desconto e cancelamento, e o controle de acesso previsto na documentação. Os casos reais das Regras de Sistema e
+os exemplos do contrato v2.3 passaram exatamente como especificados. Os três defeitos encontrados no ciclo foram
+fechados com reteste e regressão completa.</p>
+<p><strong>Decisão recomendada:</strong> aprovar o encerramento do Ciclo 1 e liberar o backend para integração com o front-end
+(Ciclo 2). A liberação para produção depende das pendências marcadas como bloqueantes na seção 8.</p>
+<h2>10. Aprovação</h2>
+<table>
+<thead>
+<tr>
+<th>Papel</th>
+<th>Nome</th>
+<th>Data</th>
+<th>Decisão</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Responsável pelo projeto</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Revisor de testes</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>11. Ciclo 1.1 — Robustez</h2>
+<p><strong>Objetivo:</strong> eliminar os riscos residuais do Ciclo 1 (seção 7) e as lacunas de teste conhecidas, deixando o backend
+tolerante a reinícios, a ataques de força bruta e a picos de acesso.
+<strong>Execução oficial:</strong> 28/10/2026, 11:09:32 – 11:12:26 · <code>./mvnw clean verify</code> · BUILD SUCCESS.</p>
+<h3>11.1 O que mudou no produto</h3>
+<table>
+<thead>
+<tr>
+<th>Ponto fraco do Ciclo 1</th>
+<th>Correção</th>
+<th>Defeito</th>
+<th>Casos que comprovam</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Revogação de tokens em memória (perdida no reinício, não compartilhada entre instâncias)</td>
+<td>Tabela <code>tokens_revogados</code> (migração V3) + limpeza agendada</td>
+<td>DEF-WEB-003</td>
+<td>CT-SEG-011, CT-SEG-012</td>
+</tr>
+<tr>
+<td>Login sem limite de tentativas</td>
+<td>Bloqueio temporário por CPF (5 falhas) e por IP (20 falhas), 429 + <code>Retry-After</code>, auditoria <code>ACESSO_BLOQUEADO</code></td>
+<td>DEF-WEB-004</td>
+<td>CT-SEG-013 a 016, CT-SEG-019, CT-AUTH-U05/U06</td>
+</tr>
+<tr>
+<td>Senha do gerente no desconto sem limite</td>
+<td>Bloqueio por vendedor (5 falhas), auditoria <code>AUTORIZACAO_FALHA</code></td>
+<td>DEF-WEB-005</td>
+<td>CT-SEG-017, CT-VEN-U24</td>
+</tr>
+<tr>
+<td>Lentidão na primeira rajada após a subida</td>
+<td>Aquecimento do pool e das consultas antes da prontidão</td>
+<td>DEF-WEB-006</td>
+<td>CT-PERF-005</td>
+</tr>
+<tr>
+<td>Sem HTTPS</td>
+<td><code>PDV_EXIGIR_HTTPS=true</code> redireciona HTTP → HTTPS; HSTS de 1 ano; cabeçalhos de segurança</td>
+<td>—</td>
+<td>CT-SEG-018, CT-SEG-020</td>
+</tr>
+<tr>
+<td>Base da comissão indefinida</td>
+<td><code>PDV_COMISSAO_BASE</code> = <code>LIQUIDO</code> (padrão) ou <code>BRUTO</code></td>
+<td>DOC-04</td>
+<td>CT-CALC-009, CT-COM-004</td>
+</tr>
+<tr>
+<td>Token expirado sem teste</td>
+<td>Validação de expiração com relógio da aplicação e tolerância de 30 s</td>
+<td>—</td>
+<td>CT-SEG-010</td>
+</tr>
+<tr>
+<td>API nunca executada fora dos testes</td>
+<td>Modo demonstração (<code>demo.cmd</code>/<code>demo.sh</code>), Swagger UI, desligamento gracioso</td>
+<td>—</td>
+<td>Smoke em servidor real (14 passos)</td>
+</tr>
+<tr>
+<td>Sem pipeline Linux</td>
+<td><code>.github/workflows/ci.yml</code> (Ubuntu, JDK 25, relatórios publicados)</td>
+<td>—</td>
+<td>Executa no primeiro push</td>
+</tr>
+</tbody></table>
+<h3>11.2 Resultados por nível</h3>
+<table>
+<thead>
+<tr>
+<th>Nível</th>
+<th>Casos distintos</th>
+<th>Execuções</th>
+<th>Aprovadas</th>
+<th>Ciclo 1 → 1.1</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Unitário (JUnit 6 + Mockito)</td>
+<td>83</td>
+<td>117</td>
+<td>117</td>
+<td>+18 casos</td>
+</tr>
+<tr>
+<td>Componente / contrato HTTP (WebMvcTest)</td>
+<td>12</td>
+<td>12</td>
+<td>12</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Integração e sistema (Spring Boot + PostgreSQL)</td>
+<td>137</td>
+<td>166</td>
+<td>166</td>
+<td>+19 casos (CT-CONC-001 agora repete 10 vezes)</td>
+</tr>
+<tr>
+<td>Aceitação BDD (Cucumber / Gherkin)</td>
+<td>16</td>
+<td>18</td>
+<td>18</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>248</strong></td>
+<td><strong>313</strong></td>
+<td><strong>313 (100%)</strong></td>
+<td><strong>+37 casos, +48 execuções</strong></td>
+</tr>
+</tbody></table>
+<p>Suítes novas: <code>RobustezSegurancaIT</code> (10), <code>ConfiguracoesAlternativasIT</code> (2), <code>InicializadorGerenteTest</code> (6).</p>
+<h3>11.3 Cobertura de código (JaCoCo)</h3>
+<table>
+<thead>
+<tr>
+<th>Contador</th>
+<th>Ciclo 1</th>
+<th>Ciclo 1.1</th>
+<th>Meta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Instruções</td>
+<td>93,6%</td>
+<td><strong>96,6%</strong> (8.294 / 8.587)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Linhas</td>
+<td>94,1%</td>
+<td><strong>96,8%</strong> (1.499 / 1.548)</td>
+<td>≥ 80% ✅</td>
+</tr>
+<tr>
+<td>Ramos</td>
+<td>81,2%</td>
+<td><strong>87,6%</strong> (408 / 466)</td>
+<td>≥ 70% ✅</td>
+</tr>
+<tr>
+<td>Métodos</td>
+<td>92,0%</td>
+<td><strong>95,0%</strong> (509 / 536)</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<p>Por pacote (linhas / ramos): <code>venda</code> 99,3% / 94,9% · <code>caixa</code> 98,1% / 100% · <code>cliente</code> 98,7% / 89,7% · <code>auth</code> 98,6% / 95,8% ·
+<code>comum</code> 97,8% / 93,5% · <code>cupom</code> 97,8% / 84,2% · <code>usuario</code> 97,7% / 91,2% · <code>auditoria</code> 100% / 87,5% · <code>produto</code> 94,8% / 77,6% ·
+<code>seguranca</code> 93,4% / 73,9% · <code>comum.erro</code> 86,7% / 75,0%. <strong>Todos os pacotes estão acima da meta de 70% de ramos.</strong></p>
+<h3>11.4 Teste de mutação (PIT)</h3>
+<p>Escopo ampliado para 12 classes (entrou <code>InicializadorGerente</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Rodada</th>
+<th>Mortos</th>
+<th>Sobreviventes</th>
+<th>Sem cobertura unitária</th>
+<th>Força dos testes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>4 (após as mudanças do ciclo)</td>
+<td>196</td>
+<td>13</td>
+<td>86</td>
+<td>93,8%</td>
+</tr>
+<tr>
+<td>5</td>
+<td>214</td>
+<td>2</td>
+<td>79</td>
+<td>99,1%</td>
+</tr>
+<tr>
+<td>6 (final)</td>
+<td><strong>216</strong></td>
+<td><strong>0</strong></td>
+<td>79</td>
+<td><strong>100%</strong> ✅</td>
+</tr>
+</tbody></table>
+<p>As 13 lacunas estão em <a href="06-relatorio-de-defeitos.pdf">Defeitos, seção 5.1</a> (MUT-08 a MUT-13).
+Escore sobre todos os mutantes gerados: 216 ÷ 295 = 73,2% (era 60,2%). Fonte: <a href="evidencias/mutacao-pit.csv">evidencias/mutacao-pit.csv</a>.</p>
+<h3>11.5 Desempenho e carga (VAL-07 — limite de 3.000 ms)</h3>
+<table>
+<thead>
+<tr>
+<th>Caso</th>
+<th>Operação</th>
+<th>Amostras</th>
+<th>Média</th>
+<th>Mediana</th>
+<th>p95</th>
+<th>Máximo</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-PERF-001</td>
+<td><code>GET /produtos</code> (1.000 produtos, limite 100)</td>
+<td>20</td>
+<td>41,0 ms</td>
+<td>35 ms</td>
+<td>74 ms</td>
+<td>77 ms</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CT-PERF-002</td>
+<td><code>GET /produtos?nome=…</code></td>
+<td>20</td>
+<td>25,1 ms</td>
+<td>22 ms</td>
+<td>36 ms</td>
+<td>46 ms</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CT-PERF-003</td>
+<td><code>POST /vendas</code> com 10 itens</td>
+<td>30</td>
+<td>45,5 ms</td>
+<td>47 ms</td>
+<td>59 ms</td>
+<td>62 ms</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CT-PERF-004</td>
+<td><code>GET /produtos/{id}</code></td>
+<td>30</td>
+<td>7,2 ms</td>
+<td>7 ms</td>
+<td>9 ms</td>
+<td>9 ms</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CT-PERF-005a</td>
+<td>Carga: primeira rajada, 20 operadores simultâneos (consulta + venda)</td>
+<td>40</td>
+<td>108,4 ms</td>
+<td>77 ms</td>
+<td>248 ms</td>
+<td>284 ms</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CT-PERF-005b</td>
+<td>Carga: regime, 20 simultâneos, 400 requisições, <strong>148 req/s</strong>, 0 erros</td>
+<td>400</td>
+<td>100,9 ms</td>
+<td>61 ms</td>
+<td>281 ms</td>
+<td>981 ms</td>
+<td>✅</td>
+</tr>
+</tbody></table>
+<p>No CT-PERF-005 o critério é mais rígido que nos demais: <strong>toda</strong> requisição (não só o p95) abaixo de 3 s e nenhuma resposta
+de erro. Antes da correção da DEF-WEB-006 a pior requisição da primeira rajada chegava a 4,0 s.</p>
+<h3>11.6 Concorrência</h3>
+<p>CT-CONC-001 (20 vendas simultâneas do último lote de 5) passou a repetir <strong>10 vezes</strong> por execução: 10/10 com exatamente
+5 vendas, 15 rejeições e estoque final 0. CT-SEG-019 mostrou que 10 senhas erradas enviadas ao mesmo tempo para o
+mesmo CPF não escapam do limite (contagem atômica no banco).</p>
+<h3>11.7 Execução em servidor real</h3>
+<p>A API subiu como servidor HTTP (modo demonstração, porta 8080) e passou num roteiro de 14 passos com <code>curl</code>: health check,
+Swagger (23 rotas), login dos dois perfis, venda do exemplo do contrato (R$ 215,00, comissão R$ 10,75), bloqueio por
+estoque (422), sangria negada ao vendedor (403), fechamento sem diferença, bloqueio de login (429, <code>Retry-After: 899</code>),
+logout (token passa a 401) e cabeçalhos de segurança. Evidência: <a href="evidencias/smoke-servidor-real.txt">evidencias/smoke-servidor-real.txt</a>.</p>
+<h3>11.8 Critérios de saída — reavaliação</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Critério</th>
+<th>Meta</th>
+<th>Ciclo 1.1</th>
+<th>Situação</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CS-1</td>
+<td>Casos P1 executados e aprovados</td>
+<td>100%</td>
+<td>100%</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CS-2</td>
+<td>Taxa de aprovação</td>
+<td>≥ 95%</td>
+<td>100% (313/313)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CS-3</td>
+<td>Defeitos Críticos/Altos abertos (backend)</td>
+<td>0</td>
+<td>0</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CS-4</td>
+<td>Requisitos do escopo com ≥ 1 caso aprovado</td>
+<td>100%</td>
+<td>100%</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CS-5</td>
+<td>Cobertura</td>
+<td>≥ 80% linhas, ≥ 70% ramos</td>
+<td>96,8% / 87,6%</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CS-6</td>
+<td>Tempo de resposta</td>
+<td>p95 &lt; 3.000 ms</td>
+<td>p95 máx. 281 ms; pior requisição 981 ms</td>
+<td>✅ (ambiente local)</td>
+</tr>
+<tr>
+<td>CS-7</td>
+<td>Força dos testes unitários</td>
+<td>≥ 80%</td>
+<td>100%</td>
+<td>✅</td>
+</tr>
+</tbody></table>
+<h3>11.9 Conclusão do Ciclo 1.1</h3>
+<p>Os quatro riscos residuais de software do Ciclo 1 foram corrigidos e cada correção tem caso automatizado que falharia
+sem ela. <strong>O que ainda separa o backend da produção é infraestrutura, não código:</strong> subir com Docker Compose (PEND-03),
+medir a carga no ambiente alvo (PEND-04) e instalar o certificado TLS no proxy (PEND-07). As sessões exploratórias
+(PEND-01) e o reteste do desktop (PEND-02) seguem abertos e não bloqueiam.</p>
+<hr>
+<h2>12. Ciclo 1.2 — Banco de dados</h2>
+<p><strong>Objetivo:</strong> fazer do banco a última barreira — o histórico financeiro e de auditoria não pode ser adulterado nem por
+erro da aplicação nem por SQL direto — e preparar o ambiente Docker de produção.
+<strong>Execução oficial:</strong> 28/10/2026, 11:49:26 – 11:53:05 · <code>./mvnw clean verify</code> · <strong>320/320</strong> · BUILD SUCCESS.</p>
+<h3>12.1 O que mudou</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Implementação</th>
+<th>Casos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Imutabilidade</td>
+<td>Migração V4: gatilhos tornam auditoria, itens de venda e movimentações de caixa &quot;só inclusão&quot;; venda não é apagada e só muda de CONCLUIDA para CANCELADA; caixa fechado não muda</td>
+<td>CT-DB-007, 008, 010</td>
+</tr>
+<tr>
+<td>Consistência</td>
+<td>CHECKs de cancelamento completo, fechamento de caixa, subtotal do item, comissão, UF e documentos só com dígitos</td>
+<td>CT-DB-009, 010</td>
+</tr>
+<tr>
+<td>Desempenho</td>
+<td>8 índices em chaves estrangeiras e em <code>(status, data_venda)</code></td>
+<td>regressão de desempenho</td>
+</tr>
+<tr>
+<td>Menor privilégio</td>
+<td>Papéis <code>pdv_migracao</code> (Flyway) e <code>pdv_app</code> (API, sem DDL, com limites de tempo); <code>PUBLIC</code> sem acesso</td>
+<td>CT-DB-011 a 013</td>
+</tr>
+<tr>
+<td>Docker</td>
+<td>Checksums de dados, SCRAM-SHA-256, log de consultas lentas, porta 5432 só local, health check da API, rotação de logs, serviço de <strong>backup diário verificado</strong> com retenção de 7 dias, scripts de backup/restauração e <code>.env</code> com senhas geradas</td>
+<td>Roteiro RT-DEP-01 a 07</td>
+</tr>
+</tbody></table>
+<p><code>PapeisDoBancoIT</code> executa o mesmo <code>docker/postgres/papeis.sql</code> do container no PostgreSQL embarcado e sobe a API
+completa com <code>pdv_app</code> e o Flyway com <code>pdv_migracao</code> — a configuração do Docker fica testada mesmo sem Docker.</p>
+<h3>12.2 Resultados</h3>
+<table>
+<thead>
+<tr>
+<th>Indicador</th>
+<th>Ciclo 1.1</th>
+<th>Ciclo 1.2</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Casos distintos</td>
+<td>248</td>
+<td><strong>255</strong> (+7: CT-DB-007 a 013)</td>
+</tr>
+<tr>
+<td>Execuções</td>
+<td>313</td>
+<td><strong>320</strong> (0 falhas)</td>
+</tr>
+<tr>
+<td>Cobertura de linhas / ramos</td>
+<td>96,8% / 87,6%</td>
+<td>96,6% / 87,6%</td>
+</tr>
+<tr>
+<td>Carga (CT-PERF-005b)</td>
+<td>p95 281 ms, máx. 981 ms</td>
+<td>p95 190 ms, máx. 1.565 ms, 149 req/s, 0 erros</td>
+</tr>
+</tbody></table>
+<p>Ajustes de teste: <code>AuditoriaIT</code> (CT-AUD-005) desliga o gatilho só durante o preparo do cenário que envelhece um log;
+<code>BancoDeDadosIT</code> (CT-DB-003) passou a fechar o caixa com data, como exige o novo CHECK.</p>
+<h3>12.3 Execução no Docker (roteiro RT-DEP)</h3>
+<p>Docker 29.9 / Compose 5.6 com WSL 2, 28/10/2026, 14:19 – 14:21 · <a href="evidencias/docker-rt-dep.txt">evidência completa</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Caso</th>
+<th>Resultado</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RT-DEP-01</td>
+<td><code>banco</code> e <code>api</code> healthy, <code>backup</code> no ar; V1–V4 aplicadas</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>RT-DEP-02</td>
+<td><code>/actuator/health</code> → <code>{&quot;status&quot;:&quot;UP&quot;}</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>RT-DEP-03</td>
+<td>Login do gerente antes e depois de <code>restart api</code>; 1 gerente no banco</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>RT-DEP-04</td>
+<td>Logout 200; token antigo após reinício → 401</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>RT-DEP-05</td>
+<td>Proxy Caddy local + <code>PDV_EXIGIR_HTTPS=true</code>: HTTP → 302 HTTPS; HTTPS 200 com HSTS, TLS 1.3 (<a href="evidencias/docker-rt-dep-05-tls.txt">evidência</a>)</td>
+<td>✅ (local; repetir na AWS)</td>
+</tr>
+<tr>
+<td>RT-DEP-06</td>
+<td>Backup manual verificado com <code>pg_restore --list</code>; backup automático &quot;backup ok&quot;</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>RT-DEP-07</td>
+<td>Venda feita depois do backup some na restauração (vendas 2 → 1, estoque 8 → 10); API UP</td>
+<td>✅</td>
+</tr>
+</tbody></table>
+<p>A primeira execução encontrou dois defeitos de script, corrigidos e retestados na mesma data:
+<strong>DEF-WEB-007</strong> (restauração falhava no Git Bash e deixava a API parada) e <strong>DEF-WEB-008</strong> (<code>subir-docker.sh</code> pedia a
+senha do banco e terminava com erro). Ao preparar o proxy TLS, uma inspeção encontrou o <strong>DEF-WEB-009</strong> (o health
+check falharia com HTTPS obrigatório). Detalhes no <a href="06-relatorio-de-defeitos.pdf">Relatório de Defeitos</a>.</p>
+</body></html>

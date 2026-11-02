@@ -1,0 +1,86 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Cenários BDD (Gherkin)</title>
+<link rel="stylesheet" href="../estilo.css"></head><body>
+<div class="doc-cabecalho"><div class="projeto">PDV Web · Documentação de Testes</div><div class="titulo">Cenários BDD (Gherkin)</div></div>
+<p>Os cenários de aceitação estão em <strong>linguagem de negócio (Gherkin em português)</strong> para que gerentes e vendedores
+possam validá-los sem ler código (Tutorial, seção 8). Eles não são só documentação: cada linha é executada pelo
+Cucumber contra a API completa e o PostgreSQL, junto com o <code>mvnw test</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Arquivo (fonte única)</th>
+<th>Requisitos</th>
+<th>Cenários</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="../../pdv-web-api/src/test/resources/features/venda_estoque.feature"><code>venda_estoque.feature</code></a></td>
+<td>VAL-01, VAL-04, UC04, UC05</td>
+<td>BDD-EST-01 (3 exemplos), BDD-EST-02</td>
+</tr>
+<tr>
+<td><a href="../../pdv-web-api/src/test/resources/features/cancelamento_venda.feature"><code>cancelamento_venda.feature</code></a></td>
+<td>VAL-02, VAL-03, UC11</td>
+<td>BDD-CAN-01 a 03</td>
+</tr>
+<tr>
+<td><a href="../../pdv-web-api/src/test/resources/features/descontos.feature"><code>descontos.feature</code></a></td>
+<td>UC06, UC07</td>
+<td>BDD-DES R1 a R8 (tabela de decisão)</td>
+</tr>
+<tr>
+<td><a href="../../pdv-web-api/src/test/resources/features/controle_caixa.feature"><code>controle_caixa.feature</code></a></td>
+<td>VAL-05, UC02, UC03, UC15</td>
+<td>BDD-CX-01 a 03</td>
+</tr>
+</tbody></table>
+<p>Passos (glue code): <code>pdv-web-api/src/test/java/br/com/empresa/pdv/bdd/PassosPdv.java</code>.
+Execução isolada: <code>./mvnw test -Dtest=CucumberSuite</code>. Relatório: <code>target/cucumber/relatorio.html</code>
+(cópia da última execução em <a href="evidencias/relatorio-cucumber.html">evidencias/relatorio-cucumber.html</a>).</p>
+<h2>Exemplo — tabela de casos reais das Regras de Sistema (seção 3)</h2>
+<pre><code class="language-gherkin"># language: pt
+Funcionalidade: Validação de estoque na frente de caixa
+
+  Contexto:
+    Dado que o vendedor &quot;Vendedor 1&quot; está autenticado com o caixa aberto
+
+  Esquema do Cenário: BDD-EST-01 Venda conforme o saldo em estoque - &lt;produto&gt;
+    Dado que o produto &quot;&lt;codigo&gt;&quot; &quot;&lt;produto&gt;&quot; tem &lt;estoque&gt; unidades em estoque e mínimo de &lt;minimo&gt;
+    Quando o vendedor registra a venda de &lt;quantidade&gt; unidades do produto &quot;&lt;codigo&gt;&quot;
+    Então a API deve responder com o status &lt;status&gt;
+    E o estoque do produto &quot;&lt;codigo&gt;&quot; deve ser de &lt;estoque_final&gt; unidades
+    E o alerta de estoque crítico do produto &quot;&lt;codigo&gt;&quot; deve estar &quot;&lt;alerta&gt;&quot;
+
+    Exemplos:
+      | codigo  | produto    | estoque | minimo | quantidade | status | estoque_final | alerta    |
+      | PROD-01 | Camiseta P | 10      | 2      | 2          | 201    | 8             | desligado |
+      | PROD-02 | Tênis 41   | 1       | 0      | 3          | 422    | 1             | desligado |
+      | PROD-03 | Meia       | 3       | 2      | 1          | 201    | 2             | ligado    |
+</code></pre>
+<h2>Resultado da última execução</h2>
+<table>
+<thead>
+<tr>
+<th>Métrica</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cenários</td>
+<td>18 executados (16 cenários distintos; BDD-EST-01 tem 3 exemplos) — <strong>18 aprovados</strong></td>
+</tr>
+<tr>
+<td>Passos</td>
+<td><strong>130 de 130 aprovados</strong></td>
+</tr>
+<tr>
+<td>Defeito encontrado</td>
+<td>DEF-TST-001 (no script de teste, não no produto): <code>{bigdecimal}</code> lia &quot;10.00&quot; como 1000 por causa do locale <code>pt</code> — corrigido e retestado</td>
+</tr>
+</tbody></table>
+<h2>Como validar com as partes interessadas</h2>
+<ol>
+<li>Ler as features com o gerente da loja e confirmar se os exemplos refletem a operação real.</li>
+<li>Cada divergência vira uma nova linha em &quot;Exemplos&quot; (ou um novo cenário) <strong>antes</strong> de mudar o código.</li>
+<li>Cenário com status vermelho = regra de negócio quebrada. O relatório HTML mostra em qual passo.</li>
+</ol>
+</body></html>

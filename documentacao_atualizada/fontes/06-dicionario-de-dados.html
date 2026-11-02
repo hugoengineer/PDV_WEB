@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Dicionário de Dados — PDV Web</title><link rel="stylesheet" href="estilo.css">
+<style>
+  table.dic td:nth-child(1) { font-family: Consolas, "Courier New", monospace; font-size: 8pt; width: 17%; }
+  table.dic td:nth-child(2) { font-family: Consolas, "Courier New", monospace; font-size: 7.6pt; width: 12%; color: #33404f; }
+  table.dic td:nth-child(3) { width: 6%; text-align: center; }
+  table.dic td:nth-child(4) { width: 7%; }
+  table.dic td:nth-child(5) { width: 24%; }
+  .pk { color: #b42318; font-weight: 700; } .fk { color: #1f5a96; font-weight: 700; } .uk { color: #1b8a5a; font-weight: 700; }
+  .ex { color: #5b6573; font-size: 7.8pt; }
+</style></head>
+<body>
+<div class="doc-cabecalho">
+  <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
+  <div class="titulo">Dicionário de Dados</div>
+  <div class="resumo">Todas as tabelas e colunas do banco PostgreSQL do PDV Web: tipo, obrigatoriedade, chaves, valores permitidos, descrição e exemplo.</div>
+</div>
+<table class="meta">
+  <tr><td>Documento</td><td>DOC-06 · Dicionário de Dados</td><td>Versão</td><td>2.0 — 28/10/2026</td></tr>
+  <tr><td>Equipe</td><td colspan="3">Hugo de Oliveira Guimarães, Jean Wictor, Cesar Franco</td></tr>
+  <tr><td>Substitui</td><td colspan="3">"Dicionário de Dados — Especificação Técnica do Banco de Dados" (13/09/2026), que não tinha estoque mínimo, exclusão lógica (<code>ativo</code>), tipo de desconto do cupom, descontos e comissão na venda, fechamento de caixa e detalhes da auditoria</td></tr>
+  <tr><td>Fonte da verdade</td><td colspan="3">Migrações Flyway <code>V1__esquema_inicial.sql</code>, <code>V2__dados_iniciais.sql</code> , <code>V3__seguranca_sessoes_e_tentativas.sql</code> e <code>V4__integridade_e_imutabilidade.sql</code></td></tr>
+</table>
+
+<h1>1. Convenções</h1>
+<ul>
+  <li><b>Chave:</b> <span class="pk">PK</span> primária · <span class="fk">FK</span> estrangeira · <span class="uk">UK</span> valor único. <b>Obrig.:</b> ✔ = <code>NOT NULL</code>.</li>
+  <li>Identificadores são <code>BIGSERIAL</code> (inteiro de 64 bits gerado pelo banco).</li>
+  <li>Valores em R$ usam <code>NUMERIC(10,2)</code> (até 99.999.999,99) — nunca ponto flutuante. Percentuais usam <code>NUMERIC(5,2)</code>.</li>
+  <li>Datas e horas usam <code>TIMESTAMPTZ</code> (gravadas em UTC e exibidas no fuso −03:00).</li>
+  <li>Domínios (valores fixos) são <code>VARCHAR</code> com restrição <code>CHECK</code>, em vez de <code>ENUM</code>.</li>
+  <li>Documentos (CPF, CNPJ, CEP, NCM, CEST) são gravados <b>só com dígitos</b>.</li>
+  <li>Registros cadastrais não são apagados: <code>ativo = false</code> marca a exclusão lógica e preserva o histórico.</li>
+</ul>
+
+<h1>2. Tabelas</h1>
+
+<h2>2.1 <code>usuarios</code> — funcionários do sistema</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador do usuário <span class="ex">· 1</span></td></tr>
+  <tr><td>cpf</td><td>VARCHAR(11)</td><td>✔</td><td class="uk">UK</td><td>11 dígitos; CPF válido</td><td>CPF de login e auditoria <span class="ex">· 52998224725</span></td></tr>
+  <tr><td>nome</td><td>VARCHAR(100)</td><td>✔</td><td></td><td>Até 100 caracteres</td><td>Nome completo <span class="ex">· Jean Wictor</span></td></tr>
+  <tr><td>senha_hash</td><td>VARCHAR(100)</td><td>✔</td><td></td><td>Hash BCrypt; a senha original tem de 8 a 72 caracteres</td><td>Senha criptografada; nunca exposta pela API</td></tr>
+  <tr><td>perfil</td><td>VARCHAR(10)</td><td>✔</td><td></td><td><code>VENDEDOR</code> | <code>GERENTE</code>; padrão VENDEDOR</td><td>Nível de acesso</td></tr>
+  <tr><td>percentual_comissao</td><td>NUMERIC(5,2)</td><td>✔</td><td></td><td>0 a 100; padrão 0</td><td>% de comissão sobre as vendas (base líquida ou bruta, conforme <code>PDV_COMISSAO_BASE</code>) <span class="ex">· 5.00</span></td></tr>
+  <tr><td>ativo</td><td>BOOLEAN</td><td>✔</td><td></td><td>Padrão <code>true</code></td><td>Falso = inativado; perde o acesso imediatamente</td></tr>
+  <tr><td>criado_em</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Data de cadastro</td></tr>
+  <tr><td>atualizado_em</td><td>TIMESTAMPTZ</td><td></td><td></td><td></td><td>Última alteração</td></tr>
+</tbody></table>
+
+<h2>2.2 <code>clientes</code> — clientes PF e PJ</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador <span class="ex">· 10</span></td></tr>
+  <tr><td>tipo</td><td>VARCHAR(2)</td><td>✔</td><td></td><td><code>PF</code> | <code>PJ</code></td><td>Pessoa física ou jurídica</td></tr>
+  <tr><td>cpf_cnpj</td><td>VARCHAR(14)</td><td>✔</td><td class="uk">UK</td><td>PF: 11 dígitos (CPF válido) · PJ: 14 dígitos (CNPJ válido)</td><td>Documento <span class="ex">· 12345678909</span></td></tr>
+  <tr><td>nome_razao_social</td><td>VARCHAR(150)</td><td>✔</td><td></td><td>Até 150 caracteres</td><td>Nome ou razão social <span class="ex">· Carlos Eduardo</span></td></tr>
+  <tr><td>email</td><td>VARCHAR(150)</td><td></td><td></td><td>Formato de e-mail</td><td>Contato</td></tr>
+  <tr><td>telefone</td><td>VARCHAR(20)</td><td></td><td></td><td>8 a 20 caracteres (dígitos, espaço, parênteses, + e −)</td><td>Contato <span class="ex">· (11) 98765-4321</span></td></tr>
+  <tr><td>cep</td><td>VARCHAR(8)</td><td></td><td></td><td>8 dígitos</td><td>CEP <span class="ex">· 01310100</span></td></tr>
+  <tr><td>endereco</td><td>VARCHAR(200)</td><td></td><td></td><td></td><td>Logradouro e número</td></tr>
+  <tr><td>bairro</td><td>VARCHAR(100)</td><td></td><td></td><td></td><td>Bairro</td></tr>
+  <tr><td>cidade</td><td>VARCHAR(100)</td><td></td><td></td><td></td><td>Cidade</td></tr>
+  <tr><td>uf</td><td>VARCHAR(2)</td><td></td><td></td><td>2 letras maiúsculas</td><td>Estado <span class="ex">· SP</span></td></tr>
+  <tr><td>ativo</td><td>BOOLEAN</td><td>✔</td><td></td><td>Padrão <code>true</code></td><td>Exclusão lógica</td></tr>
+  <tr><td>criado_em</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Data de cadastro</td></tr>
+  <tr><td>atualizado_em</td><td>TIMESTAMPTZ</td><td></td><td></td><td></td><td>Última alteração</td></tr>
+</tbody></table>
+<p class="muted">Registro inicial (migração V2): <code>tipo = PF</code>, <code>cpf_cnpj = 00000000000</code>, <code>nome_razao_social = CONSUMIDOR PADRÃO</code> — usado quando a venda não identifica o cliente. Não pode ser alterado nem inativado.</p>
+
+<h2>2.3 <code>produtos</code> — catálogo e estoque</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Código interno <span class="ex">· 104</span></td></tr>
+  <tr><td>sku</td><td>VARCHAR(40)</td><td>✔</td><td class="uk">UK</td><td>Letras, números, ponto, hífen, sublinhado; gravado em maiúsculas</td><td>Código do produto <span class="ex">· PROD-ELE-001</span></td></tr>
+  <tr><td>nome</td><td>VARCHAR(120)</td><td>✔</td><td></td><td>Até 120 caracteres</td><td>Descrição comercial <span class="ex">· Teclado Mecânico RGB</span></td></tr>
+  <tr><td>fornecedor</td><td>VARCHAR(120)</td><td></td><td></td><td></td><td>Fornecedor</td></tr>
+  <tr><td>unidade_medida</td><td>VARCHAR(10)</td><td>✔</td><td></td><td>1 a 10 letras; padrão <code>UN</code></td><td>Unidade de venda <span class="ex">· UN, KG, CX, PCT</span></td></tr>
+  <tr><td>codigo_barras</td><td>VARCHAR(14)</td><td></td><td class="uk">UK</td><td>8 a 14 dígitos</td><td>EAN/GTIN <span class="ex">· 7891234567890</span></td></tr>
+  <tr><td>ncm</td><td>VARCHAR(8)</td><td></td><td></td><td>Exatamente 8 dígitos</td><td>Classificação fiscal <span class="ex">· 84716052</span></td></tr>
+  <tr><td>cest</td><td>VARCHAR(7)</td><td></td><td></td><td>Exatamente 7 dígitos</td><td>Código CEST <span class="ex">· 2103100</span></td></tr>
+  <tr><td>preco_venda</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt; 0</code></td><td>Preço praticado nas vendas <span class="ex">· 250.00</span></td></tr>
+  <tr><td>estoque_atual</td><td>INTEGER</td><td>✔</td><td></td><td><code>&gt;= 0</code>; padrão 0; até 1.000.000</td><td>Quantidade disponível para venda <span class="ex">· 15</span></td></tr>
+  <tr><td>estoque_minimo</td><td>INTEGER</td><td>✔</td><td></td><td><code>&gt;= 0</code>; padrão 0</td><td>Ponto de alerta: crítico quando estoque_atual ≤ estoque_minimo <span class="ex">· 3</span></td></tr>
+  <tr><td>ativo</td><td>BOOLEAN</td><td>✔</td><td></td><td>Padrão <code>true</code></td><td>Exclusão lógica (produto fora de linha)</td></tr>
+  <tr><td>criado_em</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Data de cadastro</td></tr>
+  <tr><td>atualizado_em</td><td>TIMESTAMPTZ</td><td></td><td></td><td></td><td>Última alteração</td></tr>
+</tbody></table>
+
+<h2>2.4 <code>cupons_desconto</code> — cupons promocionais</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador <span class="ex">· 5</span></td></tr>
+  <tr><td>codigo</td><td>VARCHAR(30)</td><td>✔</td><td class="uk">UK</td><td>3 a 30 caracteres; maiúsculas</td><td>Código digitado na venda <span class="ex">· DESCONTO10</span></td></tr>
+  <tr><td>tipo_desconto</td><td>VARCHAR(12)</td><td>✔</td><td></td><td><code>PERCENTUAL</code> | <code>VALOR_FIXO</code></td><td>Forma de cálculo</td></tr>
+  <tr><td>valor_desconto</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt; 0</code>; se PERCENTUAL, <code>&lt;= 100</code></td><td>Percentual ou valor em R$ <span class="ex">· 10.00</span></td></tr>
+  <tr><td>data_inicio_validade</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td></td><td>Início da vigência (inclusive)</td></tr>
+  <tr><td>data_termino_validade</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Posterior ao início</td><td>Fim da vigência (inclusive)</td></tr>
+  <tr><td>ativo</td><td>BOOLEAN</td><td>✔</td><td></td><td>Padrão <code>true</code></td><td>Exclusão lógica</td></tr>
+  <tr><td>criado_em</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Data de emissão</td></tr>
+  <tr><td>atualizado_em</td><td>TIMESTAMPTZ</td><td></td><td></td><td></td><td>Última alteração</td></tr>
+</tbody></table>
+
+<h2>2.5 <code>caixas</code> — sessões (turnos) de caixa</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador do caixa <span class="ex">· 12</span></td></tr>
+  <tr><td>usuario_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ usuarios.id; um único caixa ABERTO por usuário (índice único parcial)</td><td>Operador responsável</td></tr>
+  <tr><td>status</td><td>VARCHAR(7)</td><td>✔</td><td></td><td><code>ABERTO</code> | <code>FECHADO</code>; padrão ABERTO</td><td>Situação do turno</td></tr>
+  <tr><td>suprimento_inicial</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt;= 0</code></td><td>Fundo de troco <span class="ex">· 100.00</span></td></tr>
+  <tr><td>data_abertura</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Abertura do turno</td></tr>
+  <tr><td>data_fechamento</td><td>TIMESTAMPTZ</td><td></td><td></td><td>Preenchida no fechamento</td><td>Fim do turno</td></tr>
+  <tr><td>valor_final_informado</td><td>NUMERIC(10,2)</td><td></td><td></td><td>Preenchido no fechamento</td><td>Dinheiro contado pelo operador <span class="ex">· 295.00</span></td></tr>
+  <tr><td>saldo_esperado</td><td>NUMERIC(10,2)</td><td></td><td></td><td>Preenchido no fechamento</td><td>Suprimento + suprimentos + vendas em dinheiro − sangrias <span class="ex">· 300.00</span></td></tr>
+  <tr><td>diferenca</td><td>NUMERIC(10,2)</td><td></td><td></td><td>Informado − esperado</td><td>Sobra (+) ou falta (−) <span class="ex">· −5.00</span></td></tr>
+</tbody></table>
+
+<h2>2.6 <code>movimentacoes_caixa</code> — sangrias e suprimentos</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador <span class="ex">· 4</span></td></tr>
+  <tr><td>caixa_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ caixas.id; o caixa precisa estar ABERTO</td><td>Caixa afetado</td></tr>
+  <tr><td>usuario_gerente_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ usuarios.id (perfil GERENTE)</td><td>Gerente responsável</td></tr>
+  <tr><td>tipo</td><td>VARCHAR(10)</td><td>✔</td><td></td><td><code>SANGRIA</code> | <code>SUPRIMENTO</code></td><td>Retirada ou entrada de dinheiro</td></tr>
+  <tr><td>valor</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt; 0</code>; sangria ≤ saldo em dinheiro</td><td>Valor movimentado <span class="ex">· 150.00</span></td></tr>
+  <tr><td>observacao</td><td>VARCHAR(255)</td><td>✔</td><td></td><td>Não pode ser vazia</td><td>Justificativa <span class="ex">· Retirada para o cofre</span></td></tr>
+  <tr><td>data_hora</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Momento da movimentação</td></tr>
+</tbody></table>
+
+<h2>2.7 <code>vendas</code> — cabeçalho das vendas</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Número da venda (cupom) <span class="ex">· 89</span></td></tr>
+  <tr><td>usuario_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ usuarios.id</td><td>Vendedor (base da comissão)</td></tr>
+  <tr><td>cliente_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ clientes.id</td><td>Cliente ou Consumidor Padrão</td></tr>
+  <tr><td>caixa_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ caixas.id; caixa ABERTO do próprio vendedor</td><td>Caixa da operação</td></tr>
+  <tr><td>cupom_id</td><td>BIGINT</td><td></td><td class="fk">FK</td><td>→ cupons_desconto.id</td><td>Cupom aplicado, se houver</td></tr>
+  <tr><td>gerente_autorizador_id</td><td>BIGINT</td><td></td><td class="fk">FK</td><td>→ usuarios.id</td><td>Gerente que autorizou o desconto direto</td></tr>
+  <tr><td>valor_subtotal</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt; 0</code></td><td>Soma dos itens a preço de catálogo <span class="ex">· 250.00</span></td></tr>
+  <tr><td>desconto_cupom</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt;= 0</code>; padrão 0</td><td>Desconto do cupom (aplicado primeiro) <span class="ex">· 25.00</span></td></tr>
+  <tr><td>desconto_gerente</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt;= 0</code>; padrão 0</td><td>Desconto direto em R$ <span class="ex">· 10.00</span></td></tr>
+  <tr><td>valor_total</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt;= 0</code>; = subtotal − descontos (CHECK)</td><td>Valor pago <span class="ex">· 215.00</span></td></tr>
+  <tr><td>modalidade_pagamento</td><td>VARCHAR(15)</td><td>✔</td><td></td><td><code>DINHEIRO</code> | <code>PIX</code> | <code>CARTAO_CREDITO</code> | <code>CARTAO_DEBITO</code> | <code>CREDIARIO</code></td><td>Forma de pagamento (simulada)</td></tr>
+  <tr><td>status</td><td>VARCHAR(10)</td><td>✔</td><td></td><td><code>CONCLUIDA</code> | <code>CANCELADA</code>; padrão CONCLUIDA</td><td>Situação da venda</td></tr>
+  <tr><td>percentual_comissao</td><td>NUMERIC(5,2)</td><td>✔</td><td></td><td>Copiado do vendedor no momento da venda</td><td>Percentual congelado <span class="ex">· 5.00</span></td></tr>
+  <tr><td>valor_comissao</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td>valor_total × percentual ÷ 100 (base <code>LIQUIDO</code>, padrão) ou valor_subtotal × percentual ÷ 100 (base <code>BRUTO</code>)</td><td>Comissão do vendedor <span class="ex">· 10.75</span></td></tr>
+  <tr><td>data_venda</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Momento da venda</td></tr>
+  <tr><td>motivo_cancelamento</td><td>VARCHAR(255)</td><td></td><td></td><td>5 a 255 caracteres</td><td>Preenchido no cancelamento</td></tr>
+  <tr><td>data_cancelamento</td><td>TIMESTAMPTZ</td><td></td><td></td><td></td><td>Momento do cancelamento</td></tr>
+  <tr><td>usuario_cancelamento_id</td><td>BIGINT</td><td></td><td class="fk">FK</td><td>→ usuarios.id (GERENTE)</td><td>Quem cancelou</td></tr>
+</tbody></table>
+
+<h2>2.8 <code>itens_venda</code> — itens das vendas</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador do item</td></tr>
+  <tr><td>venda_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ vendas.id (exclusão em cascata)</td><td>Venda a que pertence <span class="ex">· 89</span></td></tr>
+  <tr><td>produto_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ produtos.id</td><td>Produto vendido <span class="ex">· 104</span></td></tr>
+  <tr><td>quantidade</td><td>INTEGER</td><td>✔</td><td></td><td><code>&gt; 0</code>; até 10.000</td><td>Quantidade <span class="ex">· 1</span></td></tr>
+  <tr><td>preco_unitario</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt; 0</code>; preço de catálogo no momento da venda</td><td>Preço congelado <span class="ex">· 250.00</span></td></tr>
+  <tr><td>subtotal</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td>quantidade × preço unitário</td><td>Valor do item <span class="ex">· 250.00</span></td></tr>
+</tbody></table>
+
+<h2>2.9 <code>logs_auditoria</code> — registro das ações sensíveis</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador do registro</td></tr>
+  <tr><td>usuario_id</td><td>BIGINT</td><td></td><td class="fk">FK</td><td>→ usuarios.id; nulo em login com CPF inexistente</td><td>Autor da ação</td></tr>
+  <tr><td>data_hora</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Momento exato</td></tr>
+  <tr><td>tipo_acao</td><td>VARCHAR(40)</td><td>✔</td><td></td><td>Um dos 25 tipos da seção 3</td><td>Ação realizada <span class="ex">· CANCELAMENTO_VENDA</span></td></tr>
+  <tr><td>entidade</td><td>VARCHAR(40)</td><td></td><td></td><td>USUARIO, PRODUTO, CLIENTE, CUPOM, CAIXA, VENDA</td><td>Tipo do registro afetado</td></tr>
+  <tr><td>entidade_id</td><td>BIGINT</td><td></td><td></td><td>Sem FK (aponta para a tabela indicada em <code>entidade</code>)</td><td>Id do registro afetado <span class="ex">· 89</span></td></tr>
+  <tr><td>detalhes</td><td>VARCHAR(1000)</td><td>✔</td><td></td><td></td><td>Descrição legível <span class="ex">· Preço alterado de R$ 250.00 para R$ 270.00…</span></td></tr>
+  <tr><td>valor_anterior</td><td>TEXT</td><td></td><td></td><td></td><td>Estado antes da alteração</td></tr>
+  <tr><td>valor_novo</td><td>TEXT</td><td></td><td></td><td></td><td>Estado depois da alteração</td></tr>
+</tbody></table>
+
+<h2>2.10 <code>tokens_revogados</code> — sessões encerradas antes de expirar (V3)</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>jti</td><td>VARCHAR(64)</td><td>✔</td><td class="pk">PK</td><td>Identificador único do token (claim <code>jti</code>)</td><td>Token revogado no logout ou na renovação <span class="ex">· 3f2a…-9c1d</span></td></tr>
+  <tr><td>expira_em</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Expiração original do token</td><td>Depois dela o registro é apagado pela limpeza periódica (de hora em hora)</td></tr>
+  <tr><td>revogado_em</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Momento do logout/renovação</td></tr>
+</tbody></table>
+
+<h2>2.11 <code>tentativas_acesso</code> — limite de tentativas contra força bruta (V3)</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>chave</td><td>VARCHAR(80)</td><td>✔</td><td class="pk">PK</td><td>Prefixo <code>cpf:</code> (login por CPF), <code>ip:</code> (login por endereço) ou <code>pin:</code> (senha do gerente no desconto, por vendedor)</td><td>O que está sendo limitado <span class="ex">· cpf:52998224725</span></td></tr>
+  <tr><td>falhas</td><td>INTEGER</td><td>✔</td><td></td><td><code>&gt;= 0</code>; padrão 0. Limites: 5 (CPF), 20 (IP), 5 (senha do gerente)</td><td>Tentativas erradas na janela atual <span class="ex">· 3</span></td></tr>
+  <tr><td>janela_inicio</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>A contagem recomeça após 15 min</td><td>Início da janela de contagem</td></tr>
+  <tr><td>bloqueado_ate</td><td>TIMESTAMPTZ</td><td></td><td></td><td>Preenchido ao atingir o limite (15 min)</td><td>Até quando a chave recebe HTTP 429</td></tr>
+</tbody></table>
+<p class="muted">As duas tabelas não têm chave estrangeira: uma tentativa pode usar um CPF que não existe, e um token revogado pertence a um usuário já identificado no próprio token.</p>
+
+<h1 class="quebra">3. Domínio de <code>logs_auditoria.tipo_acao</code></h1>
+<table>
+  <thead><tr><th style="width:18%">Grupo</th><th>Valores</th></tr></thead>
+  <tbody>
+    <tr><td>Acesso</td><td><code>LOGIN_SUCESSO</code>, <code>LOGIN_FALHA</code>, <code>SENHA_ALTERADA</code>, <code>ACESSO_BLOQUEADO</code> (limite de tentativas atingido)</td></tr>
+    <tr><td>Funcionários</td><td><code>USUARIO_CREATE</code>, <code>USUARIO_UPDATE</code>, <code>USUARIO_INATIVACAO</code></td></tr>
+    <tr><td>Produtos</td><td><code>PRODUTO_CREATE</code>, <code>PRODUTO_UPDATE</code>, <code>PRODUTO_INATIVACAO</code>, <code>ESTOQUE_AJUSTE</code></td></tr>
+    <tr><td>Clientes</td><td><code>CLIENTE_CREATE</code>, <code>CLIENTE_UPDATE</code>, <code>CLIENTE_INATIVACAO</code></td></tr>
+    <tr><td>Cupons</td><td><code>CUPOM_CREATE</code>, <code>CUPOM_UPDATE</code>, <code>CUPOM_INATIVACAO</code></td></tr>
+    <tr><td>Caixa</td><td><code>CAIXA_ABERTURA</code>, <code>CAIXA_FECHAMENTO</code>, <code>SANGRIA</code>, <code>SUPRIMENTO</code></td></tr>
+    <tr><td>Vendas</td><td><code>VENDA_REGISTRO</code>, <code>DESCONTO_GERENTE</code>, <code>AUTORIZACAO_FALHA</code> (senha de gerente errada no desconto), <code>CANCELAMENTO_VENDA</code></td></tr>
+  </tbody>
+</table>
+
+<h1>4. Índices</h1>
+<table>
+  <thead><tr><th style="width:34%">Índice</th><th style="width:30%">Coluna(s)</th><th>Finalidade</th></tr></thead>
+  <tbody>
+    <tr><td><code>ix_produtos_nome</code></td><td><code>lower(nome)</code></td><td>Busca de produto por nome sem diferenciar maiúsculas</td></tr>
+    <tr><td><code>ux_caixas_um_aberto_por_usuario</code></td><td><code>usuario_id</code> onde status = ABERTO</td><td>Único: um caixa aberto por operador</td></tr>
+    <tr><td><code>ix_movimentacoes_caixa</code></td><td><code>caixa_id</code></td><td>Totais de sangria/suprimento do turno</td></tr>
+    <tr><td><code>ix_vendas_data</code></td><td><code>data_venda</code></td><td>Histórico e relatórios por período</td></tr>
+    <tr><td><code>ix_vendas_usuario</code></td><td><code>usuario_id</code></td><td>Vendas e comissões por vendedor</td></tr>
+    <tr><td><code>ix_vendas_caixa</code></td><td><code>caixa_id</code></td><td>Totais do caixa</td></tr>
+    <tr><td><code>ix_itens_venda_venda</code></td><td><code>venda_id</code></td><td>Itens de uma venda</td></tr>
+    <tr><td><code>ix_logs_auditoria_data</code> / <code>_tipo</code></td><td><code>data_hora</code> / <code>tipo_acao</code></td><td>Filtros da consulta de auditoria</td></tr>
+    <tr><td><code>ix_tokens_revogados_expira</code></td><td><code>expira_em</code></td><td>Limpeza periódica dos tokens já expirados</td></tr>
+    <tr><td><code>ix_caixas_usuario</code>, <code>ix_movimentacoes_gerente</code>, <code>ix_vendas_cliente</code>, <code>ix_vendas_cupom</code>, <code>ix_itens_venda_produto</code>, <code>ix_logs_auditoria_usuario</code></td><td>Chaves estrangeiras (V4)</td><td>Junções e filtros por operador, cliente, cupom e produto sem varrer a tabela inteira</td></tr>
+    <tr><td><code>ix_vendas_status_data</code></td><td><code>status</code>, <code>data_venda</code></td><td>Relatórios de vendas concluídas e comissões por período</td></tr>
+    <tr><td><code>ix_tentativas_janela</code></td><td><code>janela_inicio</code></td><td>Limpeza das tentativas antigas</td></tr>
+  </tbody>
+</table>
+<p class="muted">As colunas com <code>UNIQUE</code> (CPF, CPF/CNPJ, SKU, código de barras, código do cupom) também têm índice criado automaticamente pelo banco.</p>
+
+<h1>5. Regras garantidas pelo banco (migração V4)</h1>
+<table>
+  <thead><tr><th style="width:30%">Regra</th><th>Efeito</th></tr></thead>
+  <tbody>
+    <tr><td><code>ck_vendas_cancelamento</code></td><td>Venda CONCLUIDA não tem dados de cancelamento; venda CANCELADA tem motivo, data e gerente</td></tr>
+    <tr><td><code>ck_vendas_comissao</code></td><td>Percentual de 0 a 100 e valor da comissão não negativo</td></tr>
+    <tr><td><code>ck_itens_venda_subtotal</code></td><td>Subtotal do item = quantidade × preço unitário</td></tr>
+    <tr><td><code>ck_caixas_fechamento</code></td><td>Caixa ABERTO sem data de fechamento; FECHADO com data posterior à abertura</td></tr>
+    <tr><td><code>ck_clientes_uf</code>, <code>ck_clientes_documento_digitos</code>, <code>ck_usuarios_cpf_digitos</code></td><td>UF com 2 letras maiúsculas; documentos só com dígitos</td></tr>
+    <tr><td>Gatilho <code>tg_logs_auditoria_imutavel</code></td><td>Log de auditoria só aceita inclusão (UPDATE e DELETE são rejeitados)</td></tr>
+    <tr><td>Gatilhos <code>tg_itens_venda_imutavel</code>, <code>tg_movimentacoes_caixa_imutavel</code></td><td>Itens de venda e sangrias/suprimentos só aceitam inclusão</td></tr>
+    <tr><td>Gatilho <code>tg_vendas_protegida</code></td><td>Venda não é apagada; valores, pagamento, vendedor e data não mudam; a única mudança aceita é CONCLUIDA → CANCELADA, e a cancelada não volta</td></tr>
+    <tr><td>Gatilho <code>tg_caixas_protegido</code></td><td>Caixa não é apagado; depois de fechado, nada nele muda</td></tr>
+  </tbody>
+</table>
+
+<h1>6. Usuários (papéis) do banco em produção</h1>
+<table>
+  <thead><tr><th style="width:22%">Papel</th><th>Uso e permissões</th></tr></thead>
+  <tbody>
+    <tr><td><code>pdv_admin</code> (superusuário)</td><td>Administração e backup; a API nunca o utiliza</td></tr>
+    <tr><td><code>pdv_migracao</code></td><td>Dono do banco e das tabelas; usado só pelo Flyway para aplicar as migrações</td></tr>
+    <tr><td><code>pdv_app</code></td><td>Usado pela API: SELECT, INSERT, UPDATE e DELETE nos dados. Não cria, apaga, esvazia nem altera tabelas e não desliga gatilhos. Limites: consulta 30 s, espera por bloqueio 10 s, transação ociosa 60 s, 60 conexões</td></tr>
+  </tbody>
+</table>
+<p class="muted">Criados por <code>pdv-web-api/docker/postgres/papeis.sql</code> na primeira subida do container. Senhas com SCRAM-SHA-256, geradas por <code>scripts/criar-env.sh</code>.</p>
+</body></html>

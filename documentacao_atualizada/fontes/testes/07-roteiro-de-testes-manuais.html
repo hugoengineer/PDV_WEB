@@ -1,0 +1,232 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Roteiro de Testes Manuais e Exploratórios</title>
+<link rel="stylesheet" href="../estilo.css"></head><body>
+<div class="doc-cabecalho"><div class="projeto">PDV Web · Documentação de Testes</div><div class="titulo">Roteiro de Testes Manuais e Exploratórios</div></div>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Identificador</td>
+<td>RTM-PDV-001 · versão 1.0 · 26/10/2026</td>
+</tr>
+<tr>
+<td>Situação</td>
+<td><strong>20 itens — 7 executados e aprovados em 28/10/2026 (RT-DEP-01 a 07, no Docker)</strong>; os demais dependem de PostgreSQL local com interface gráfica ou de sessão exploratória com pessoas. RT-DEP-05 deve ser repetido na AWS com o domínio real. RT-DEP-04 e 05 foram incluídos no Ciclo 1.1. As sessões EXP já podem usar o modo demonstração (<code>demo.sh</code> / <code>demo.cmd</code>) com o Swagger UI</td>
+</tr>
+</tbody></table>
+<p>Os itens abaixo complementam a bateria automatizada. Cada execução deve registrar data, executor, resultado obtido,
+status (Aprovado / Reprovado / Bloqueado) e evidência (captura de tela, resposta HTTP ou log).</p>
+<hr>
+<h2>1. Reteste manual das correções do desktop (RT-DSK)</h2>
+<p><strong>Pré-condições comuns:</strong> PostgreSQL local com o banco <code>sistema_vendas</code> criado por <code>database/schema.sql</code>;
+variável <code>DB_PASSWORD</code> definida; aplicação iniciada com <code>mvnw javafx:run</code> na pasta <code>SistemaVendasEmpresa</code>.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Defeito</th>
+<th>Passos</th>
+<th>Resultado esperado</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RT-DSK-01</td>
+<td>DEF-DSK-001</td>
+<td>1. Cadastrar produto com estoque 2. 2. PDV: adicionar 2 unidades ao carrinho. 3. Tentar adicionar mais 1.</td>
+<td>Passo 3 bloqueado com &quot;Saldo Insuficiente: Estoque atual = 2 unidades.&quot;</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>RT-DSK-02</td>
+<td>DEF-DSK-001</td>
+<td>1. Produto com estoque 1. 2. Abrir o PDV em <strong>duas instâncias</strong> da aplicação. 3. Adicionar 1 unidade em cada. 4. Finalizar nas duas.</td>
+<td>Uma finaliza; a outra mostra &quot;Saldo insuficiente…&quot;; o estoque no banco fica 0 (nunca −1)</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>RT-DSK-03</td>
+<td>DEF-DSK-002</td>
+<td>1. Gerar o JAR / executar no Linux. 2. Abrir Clientes, Produtos e Vendedores pelo menu.</td>
+<td>As três telas abrem, sem a janela &quot;Erro de Navegação&quot;</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>RT-DSK-04</td>
+<td>DEF-DSK-003</td>
+<td>Chamar <code>buscarVendasPorVendedor()</code> (ex.: depuração na IDE) com vendas cadastradas</td>
+<td>Lista com um item por vendedor e comissão calculada</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>RT-DSK-05</td>
+<td>DEF-DSK-004, 008</td>
+<td>1. Clientes: clicar num cliente da tabela. 2. Alterar bairro, estado, UF e CEP. 3. &quot;Atualizar&quot;. 4. Reabrir a tela.</td>
+<td>Os campos aparecem preenchidos ao clicar; os 4 campos alterados persistem</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>RT-DSK-06</td>
+<td>DEF-DSK-005</td>
+<td><code>mvnw javafx:run</code> em <code>SistemaVendasEmpresa</code></td>
+<td>A janela principal abre</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>RT-DSK-07</td>
+<td>DEF-DSK-006</td>
+<td><code>psql -d banco_vazio -f database/schema.sql</code>; depois usar todas as telas</td>
+<td>Script roda sem erro; nenhuma tela reclama de tabela ou coluna inexistente</td>
+<td>Não executado</td>
+</tr>
+</tbody></table>
+<h2>2. Implantação (RT-DEP) — pendência PEND-03</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Passos</th>
+<th>Resultado esperado</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RT-DEP-01</td>
+<td><code>bash scripts/subir-docker.sh &lt;CPF&gt;</code> em <code>pdv-web-api</code> (gera o <code>.env</code> e roda <code>docker compose up -d --build</code>)</td>
+<td><code>banco</code> e <code>api</code> ficam &quot;healthy&quot;, <code>backup</code> &quot;running&quot;; <code>flyway_schema_history</code> mostra V1–V4</td>
+<td><strong>Aprovado</strong> 28/10/2026 — 3 serviços no ar, V1–V4 com sucesso. <a href="evidencias/docker-rt-dep.txt">evidência</a>. A 1ª execução revelou DEF-WEB-008 (corrigido)</td>
+</tr>
+<tr>
+<td>RT-DEP-02</td>
+<td><code>curl http://localhost:8080/actuator/health</code></td>
+<td><code>{&quot;status&quot;:&quot;UP&quot;}</code></td>
+<td><strong>Aprovado</strong> 28/10/2026 — <code>{&quot;status&quot;:&quot;UP&quot;}</code> no Docker. <a href="evidencias/docker-rt-dep.txt">evidência</a></td>
+</tr>
+<tr>
+<td>RT-DEP-03</td>
+<td><code>POST /auth/login</code> com <code>PDV_ADMIN_CPF</code>/<code>PDV_ADMIN_SENHA</code>; depois <code>docker compose restart api</code> e login de novo</td>
+<td>Token emitido nas duas vezes; o gerente não é duplicado</td>
+<td><strong>Aprovado</strong> 28/10/2026 — token nas duas vezes; 1 gerente. <a href="evidencias/docker-rt-dep.txt">evidência</a></td>
+</tr>
+<tr>
+<td>RT-DEP-04</td>
+<td>Login; <code>POST /auth/logout</code>; <code>docker compose restart api</code>; usar o token antigo</td>
+<td>401 — o logout sobrevive ao reinício (DEF-WEB-003). Automatizado em CT-SEG-011</td>
+<td><strong>Aprovado</strong> 28/10/2026 — logout 200; token antigo após reinício 401. <a href="evidencias/docker-rt-dep.txt">evidência</a></td>
+</tr>
+<tr>
+<td>RT-DEP-05</td>
+<td>Com <code>PDV_EXIGIR_HTTPS=true</code> atrás do proxy TLS: <code>curl -I http://&lt;host&gt;/produtos</code> e <code>curl -I https://&lt;host&gt;/actuator/health</code></td>
+<td>302 para <code>https://…</code>; a resposta HTTPS traz <code>Strict-Transport-Security</code></td>
+<td><strong>Aprovado</strong> 28/10/2026 no proxy Caddy local (<code>--profile tls</code>, CA interna): 302 → <code>https://localhost/produtos</code>; HTTPS 200 com HSTS, TLS 1.3; <code>X-Forwarded-Proto</code> forjado é descartado. <a href="evidencias/docker-rt-dep-05-tls.txt">evidência</a>. Repetir na AWS com o certificado Let&#39;s Encrypt (PEND-07)</td>
+</tr>
+<tr>
+<td>RT-DEP-06</td>
+<td><code>bash scripts/backup-agora.sh</code>; <code>docker compose logs backup</code></td>
+<td>Arquivo <code>.dump</code> em <code>backups/</code>; o log mostra &quot;backup ok&quot; da cópia automática</td>
+<td><strong>Aprovado</strong> 28/10/2026 — <code>.dump</code> manual verificado; log &quot;backup ok&quot; da cópia automática. <a href="evidencias/docker-rt-dep.txt">evidência</a></td>
+</tr>
+<tr>
+<td>RT-DEP-07</td>
+<td>Registrar uma venda; <code>bash scripts/restaurar-backup.sh &lt;backup anterior&gt;</code>; consultar a venda</td>
+<td>A venda registrada depois do backup some; o restante dos dados volta íntegro e a API responde</td>
+<td><strong>Aprovado</strong> 28/10/2026 (2ª execução) — vendas 2 → 1, estoque 8 → 10, API UP. A 1ª execução reprovou: DEF-WEB-007 (corrigido). <a href="evidencias/docker-rt-dep.txt">evidência</a></td>
+</tr>
+</tbody></table>
+<h2>3. Testes exploratórios (EXP) — sessões de 60 minutos</h2>
+<p>Técnica do Tutorial (5.6): o testador explora, formula hipóteses e registra comportamentos inesperados.
+Todo defeito encontrado vira um caso automatizado (regressão). Ferramenta sugerida: Postman ou <code>curl</code>.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Missão (charter)</th>
+<th>Ideias de ataque</th>
+<th>Riscos visados</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>EXP-01</td>
+<td>Explorar o registro de venda com entradas extremas</td>
+<td>200 itens; quantidade 10.000; mesmo produto em 50 linhas; <code>caixa_id</code> de caixa recém-fechado; campos extras desconhecidos no JSON; números com 20 casas decimais</td>
+<td>Validação, desempenho, atomicidade</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>EXP-02</td>
+<td>Explorar a sessão e os tokens</td>
+<td><del>Token de usuário rebaixado de GERENTE para VENDEDOR</del> (hipótese já confirmada na preparação → DEF-WEB-002, automatizado em CT-SEG-009); refresh repetido em paralelo; logout duas vezes; token de usuário promovido</td>
+<td>Escalada de privilégio, revogação</td>
+<td>Não executado (1 ideia já convertida em teste automatizado)</td>
+</tr>
+<tr>
+<td>EXP-03</td>
+<td>Explorar o caixa ao longo de um turno real</td>
+<td>Abrir, vender em todas as modalidades, sangria, suprimento, cancelar uma venda em dinheiro e fechar; conferir o saldo à mão</td>
+<td>Exatidão financeira</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>EXP-04</td>
+<td>Explorar cadastros com dados &quot;sujos&quot;</td>
+<td>Nomes com 150+ caracteres, emojis, acentos, espaços nas pontas; e-mails com <code>+</code>; CEP com espaços; CNPJ com letras (novo formato alfanumérico de CNPJ previsto pela Receita)</td>
+<td>Robustez, compatibilidade futura</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>EXP-05</td>
+<td>Explorar cupons no limite da vigência</td>
+<td>Cupom expirando durante uma venda; cupom alterado pelo gerente enquanto o vendedor finaliza; códigos com minúsculas e espaços</td>
+<td>Condição de corrida, normalização</td>
+<td>Não executado</td>
+</tr>
+<tr>
+<td>EXP-06</td>
+<td>Explorar a auditoria como auditor</td>
+<td>Reconstruir, só com <code>GET /auditoria</code>, o que aconteceu num turno; procurar ações sensíveis sem log</td>
+<td>Completude da Regra 1.2</td>
+<td>Não executado</td>
+</tr>
+</tbody></table>
+<h3>Modelo de registro de sessão exploratória</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Preenchimento</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Sessão / charter</td>
+<td>EXP-0X</td>
+</tr>
+<tr>
+<td>Testador / data / duração</td>
+<td></td>
+</tr>
+<tr>
+<td>Ambiente / versão</td>
+<td></td>
+</tr>
+<tr>
+<td>O que foi explorado</td>
+<td></td>
+</tr>
+<tr>
+<td>Defeitos encontrados (ID)</td>
+<td></td>
+</tr>
+<tr>
+<td>Dúvidas / riscos levantados</td>
+<td></td>
+</tr>
+<tr>
+<td>Casos automatizados criados a partir da sessão</td>
+<td></td>
+</tr>
+</tbody></table>
+</body></html>

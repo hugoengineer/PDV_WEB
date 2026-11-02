@@ -1,0 +1,732 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Plano de Testes</title>
+<link rel="stylesheet" href="../estilo.css"></head><body>
+<div class="doc-cabecalho"><div class="projeto">PDV Web · Documentação de Testes</div><div class="titulo">Plano de Testes</div></div>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Identificador</td>
+<td>PT-PDV-001</td>
+</tr>
+<tr>
+<td>Versão</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>26/10/2026</td>
+</tr>
+<tr>
+<td>Projeto</td>
+<td>Sistema de Ponto de Venda (PDV) Web</td>
+</tr>
+<tr>
+<td>Equipe do projeto</td>
+<td>Hugo de Oliveira Guimarães, Jean Wictor, Cesar Franco</td>
+</tr>
+<tr>
+<td>Modelo seguido</td>
+<td>IEEE 829 / ISO/IEC/IEEE 29119-3 (Plano de Teste), processo de 7 etapas do <em>Tutorial de Cenários de Testes</em></td>
+</tr>
+<tr>
+<td>Status</td>
+<td>Aprovado para execução — Ciclo 1 executado (ver <a href="05-relatorio-de-execucao.pdf">Relatório de Execução</a>)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>1. Introdução</h2>
+<p>Este plano define <strong>o que</strong> será testado no PDV Web, <strong>como</strong>, <strong>com quais critérios</strong> e <strong>com quais entregáveis</strong>.
+O objetivo é mostrar, com evidência objetiva e reproduzível, que o backend <code>pdv-web-api</code> atende às regras de negócio,
+às validações VAL-01 a VAL-08 e ao contrato da API v2.3. O plano também cobre o reteste das correções feitas no
+sistema desktop legado.</p>
+<p>Objetivos específicos:</p>
+<ol>
+<li>Verificar os 16 casos de uso (UC01–UC16) e as regras de sistema (Regras 1.1, 1.2, 2.1–2.3).</li>
+<li>Garantir a <strong>integridade financeira e de estoque</strong>, os riscos centrais do Plano de Projeto (seção 1.9):
+vendas sem saldo, vendas concorrentes, descontos sem autorização e estornos.</li>
+<li>Garantir o <strong>controle de acesso por perfil</strong> (VAL-02) e a segurança da autenticação (VAL-06).</li>
+<li>Medir o tempo de resposta contra o limite de 3 segundos (VAL-07).</li>
+<li>Produzir evidências e métricas que sustentem a decisão de seguir para a fase Beta.</li>
+</ol>
+<h2>2. Documentos de referência</h2>
+<table>
+<thead>
+<tr>
+<th>Ref.</th>
+<th>Documento</th>
+<th>Versão/Data</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>R1</td>
+<td>Documentação Técnica da API RESTful</td>
+<td>v2.3 — 13/09/2026</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>Documentação de Casos de Uso — PDV Web</td>
+<td>09/2026</td>
+</tr>
+<tr>
+<td>R3</td>
+<td>Dicionário de Dados</td>
+<td>13/09/2026</td>
+</tr>
+<tr>
+<td>R4</td>
+<td>Documentação do Projeto PDV Web</td>
+<td>24/08/2026</td>
+</tr>
+<tr>
+<td>R5</td>
+<td>Regras de Sistema / Tabela de Planejamento e Regras</td>
+<td>17/08/2026</td>
+</tr>
+<tr>
+<td>R6</td>
+<td>Plano de Projeto</td>
+<td>17/08/2026</td>
+</tr>
+<tr>
+<td>R7</td>
+<td>Tutorial — Criação de Cenários de Testes no Desenvolvimento de Software</td>
+<td>—</td>
+</tr>
+<tr>
+<td>R8</td>
+<td><a href="../arquitetura/ADR-001-decisoes-pdv-web.pdf">ADR-001 — Decisões de arquitetura e resolução de inconsistências</a></td>
+<td>26/10/2026</td>
+</tr>
+</tbody></table>
+<p>Onde os documentos R1–R6 divergem, vale a regra de precedência do ADR-001 (R8).</p>
+<h2>3. Itens de teste</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Versão</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>pdv-web-api</code></td>
+<td>2.3.0</td>
+<td>Backend REST (Java 25, Spring Boot 4.1, PostgreSQL 17)</td>
+</tr>
+<tr>
+<td>Esquema do banco</td>
+<td>Flyway V1, V2</td>
+<td>Tabelas, restrições (CHECK, UNIQUE, FK) e dados iniciais</td>
+</tr>
+<tr>
+<td><code>SistemaVendasEmpresa</code> (desktop)</td>
+<td>1.0-SNAPSHOT</td>
+<td>Sistema legado JavaFX — apenas reteste das correções DEF-DSK</td>
+</tr>
+</tbody></table>
+<h2>4. Escopo</h2>
+<h3>4.1 Funcionalidades a testar</h3>
+<table>
+<thead>
+<tr>
+<th>Grupo</th>
+<th>Requisitos</th>
+<th>Prioridade</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Autenticação e sessão</td>
+<td>UC01, VAL-06, Regra 2.3 (login obrigatório), política JWT 24 h</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Controle de acesso (RBAC)</td>
+<td>VAL-02, Regra 2.2 (restrição de perfil)</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Registro de venda e estoque</td>
+<td>UC04, UC05, VAL-01, VAL-08 (reserva de estoque — parcial, ADR D-02), Regra 1.1, Regra 2.1</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Descontos</td>
+<td>UC06, UC07, Regra 1.1 (cupom / autorização)</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Cancelamento e estorno</td>
+<td>UC11, VAL-03, Regra 2.2</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Controle de caixa</td>
+<td>UC02, UC03, UC15, VAL-05</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Alerta de estoque crítico</td>
+<td>VAL-04, UC09</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Comissões e histórico</td>
+<td>UC10, Regra 1.1.1.11</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Cadastros</td>
+<td>UC08 (clientes), UC12 (produtos), UC13 (usuários), UC14 (cupons)</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Auditoria</td>
+<td>UC16, Regra 1.2</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Contrato da API</td>
+<td>Paginação, RFC 7807, snake_case, PUT×PATCH, soft delete, imutabilidade de vendas (R1, seções 1–2)</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Desempenho</td>
+<td>VAL-07 (&lt; 3 s)</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Integridade do banco</td>
+<td>Restrições do esquema e migrações</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>Correções do desktop</td>
+<td>DEF-DSK-001 a DEF-DSK-008</td>
+<td>P3</td>
+</tr>
+</tbody></table>
+<h3>4.2 Fora do escopo deste ciclo</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Motivo</th>
+<th>Tratamento</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Interface Web (front-end)</td>
+<td>Ainda não desenvolvida</td>
+<td>Testes E2E de interface (Playwright) planejados para o próximo ciclo</td>
+</tr>
+<tr>
+<td>Alerta &quot;em tempo real nas telas&quot; (push)</td>
+<td>Depende do front-end (ADR D-11)</td>
+<td>Backend testado (flag e lista de alertas)</td>
+</tr>
+<tr>
+<td>Implantação Docker / AWS EC2</td>
+<td>Docker indisponível no ambiente de teste</td>
+<td>Pendência PEND-03</td>
+</tr>
+<tr>
+<td>Teste de carga em produção (JMeter)</td>
+<td>Requer o ambiente AWS</td>
+<td>Pendência PEND-04; aqui só a medição local VAL-07</td>
+</tr>
+<tr>
+<td>Emissão de NF-e/NFC-e e integração TEF</td>
+<td>Fora do escopo do projeto (R6, seção 1.6)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Usabilidade</td>
+<td>Sem interface</td>
+<td>Próximo ciclo</td>
+</tr>
+</tbody></table>
+<h2>5. Abordagem</h2>
+<h3>5.1 Processo (Tutorial, seção 3)</h3>
+<table>
+<thead>
+<tr>
+<th>Etapa</th>
+<th>Como foi aplicada</th>
+<th>Artefato</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. Entender os requisitos</td>
+<td>Leitura de R1–R6, extração das regras e resolução de conflitos</td>
+<td><a href="../arquitetura/ADR-001-decisoes-pdv-web.pdf">ADR-001</a></td>
+</tr>
+<tr>
+<td>2. Identificar condições</td>
+<td>Regras → condições de teste por requisito</td>
+<td><a href="02-especificacao-de-casos-de-teste.pdf">Especificação, seção 1</a></td>
+</tr>
+<tr>
+<td>3. Definir cenários</td>
+<td>Positivos, negativos, limites, exceção, segurança, desempenho e regressão</td>
+<td><a href="02-especificacao-de-casos-de-teste.pdf">Especificação, seção 2</a></td>
+</tr>
+<tr>
+<td>4. Preparar os casos</td>
+<td>Casos com ID, requisito, dados, passos e resultado esperado</td>
+<td><a href="02-especificacao-de-casos-de-teste.pdf">Especificação, seções 3–4</a></td>
+</tr>
+<tr>
+<td>5. Priorizar</td>
+<td>P1–P4 por risco × impacto (seção 7 deste plano)</td>
+<td>Coluna &quot;Prior.&quot; do catálogo</td>
+</tr>
+<tr>
+<td>6. Executar e registrar</td>
+<td>Execução automatizada com evidências em XML/CSV/HTML</td>
+<td><a href="05-relatorio-de-execucao.pdf">Relatório de Execução</a></td>
+</tr>
+<tr>
+<td>7. Corrigir e retestar</td>
+<td>Defeitos registrados, corrigidos e regressão completa</td>
+<td><a href="06-relatorio-de-defeitos.pdf">Relatório de Defeitos</a></td>
+</tr>
+</tbody></table>
+<h3>5.2 Níveis de teste (pirâmide)</h3>
+<table>
+<thead>
+<tr>
+<th>Nível</th>
+<th>Objetivo</th>
+<th>Ferramentas</th>
+<th>Isolamento</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Unitário</td>
+<td>Regras de negócio puras (cálculo, validação, estados) e serviços com dependências simuladas</td>
+<td>JUnit 6 (Jupiter), Mockito, AssertJ</td>
+<td>Sem banco e sem rede</td>
+</tr>
+<tr>
+<td>Componente (API)</td>
+<td>Contrato HTTP: status, formato RFC 7807, validação de entrada, autorização</td>
+<td><code>@WebMvcTest</code>, MockMvc, <code>@MockitoBean</code>, spring-security-test</td>
+<td>Serviço simulado</td>
+</tr>
+<tr>
+<td>Integração</td>
+<td>Fluxo HTTP → segurança → serviço → JPA → PostgreSQL real, incluindo transações e restrições</td>
+<td><code>@SpringBootTest</code>, MockMvc, PostgreSQL 17 embarcado (Zonky)</td>
+<td>Banco exclusivo, limpo a cada teste</td>
+</tr>
+<tr>
+<td>Sistema (API ponta a ponta)</td>
+<td>Fluxos completos de negócio: abrir caixa → vender → sangria → cancelar → fechar</td>
+<td>Mesmos da integração</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Aceitação (BDD)</td>
+<td>Regras escritas em linguagem de negócio (Gherkin pt-BR) e executáveis</td>
+<td>Cucumber 7 + JUnit Platform Suite</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<h3>5.3 Tipos de teste e técnicas</h3>
+<table>
+<thead>
+<tr>
+<th>Tipo / técnica (Tutorial)</th>
+<th>Onde é aplicado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Positivo / negativo (4.1, 4.2)</td>
+<td>Todos os módulos</td>
+</tr>
+<tr>
+<td>Valores-limite (4.3, 5.2)</td>
+<td>Preço, estoque, quantidade, comissão, percentual de cupom, vigência, senha, paginação, sangria, desconto vs. restante, arredondamento</td>
+</tr>
+<tr>
+<td>Particionamento de equivalência (5.1)</td>
+<td>CPF/CNPJ, tipos de pessoa, modalidades de pagamento, perfis</td>
+</tr>
+<tr>
+<td>Tabela de decisão (5.3)</td>
+<td>Cupom × desconto direto × perfil × autorização</td>
+</tr>
+<tr>
+<td>Baseado em estados (5.4)</td>
+<td>Caixa (ABERTO → FECHADO) e Venda (CONCLUIDA → CANCELADA)</td>
+</tr>
+<tr>
+<td>Exceção (4.4)</td>
+<td>Banco indisponível, erro inesperado, JSON malformado, recurso inexistente</td>
+</tr>
+<tr>
+<td>Segurança (4.5)</td>
+<td>Sem token, token adulterado, outra chave, perfil sem permissão, IDOR, injeção, usuário inativado</td>
+</tr>
+<tr>
+<td>Desempenho (4.6)</td>
+<td>VAL-07 — p95 de consultas e vendas</td>
+</tr>
+<tr>
+<td>Concorrência</td>
+<td>Venda simultânea do último item, cancelamento duplo, sangrias e aberturas simultâneas</td>
+</tr>
+<tr>
+<td>Regressão (4.7)</td>
+<td>Bateria completa a cada correção (<code>mvnw verify</code>)</td>
+</tr>
+<tr>
+<td>Exploratório (5.6)</td>
+<td>Roteiro com sessões planejadas — <a href="07-roteiro-de-testes-manuais.pdf">07-roteiro-de-testes-manuais.md</a></td>
+</tr>
+<tr>
+<td>Teste de mutação (complemento ao 14)</td>
+<td>PIT sobre as regras de negócio, para medir a eficácia das asserções</td>
+</tr>
+</tbody></table>
+<h3>5.4 Dados de teste</h3>
+<ul>
+<li><strong>CPF/CNPJ sintéticos</strong>, gerados com dígitos verificadores válidos (<code>GeradorDocumentos</code>). Nenhum documento de pessoa real é usado (LGPD).</li>
+<li>O banco é truncado antes de cada teste e recebe só o Consumidor Padrão e um gerente de teste: os resultados não dependem da ordem de execução.</li>
+<li>Massa de desempenho: 1.000 produtos gerados por <code>generate_series</code> no PostgreSQL.</li>
+<li>Exemplos oficiais usados como dados: tabela da seção 3 das Regras de Sistema (Camiseta, Tênis 41, Meia) e exemplos de payload da API v2.3 (venda de R$ 215,00, comissão de R$ 225,00, saldo de caixa de R$ 300,00).</li>
+</ul>
+<h2>6. Critérios</h2>
+<h3>6.1 Critérios de entrada</h3>
+<ul>
+<li>Código compila (<code>mvnw test-compile</code>) e as migrações Flyway aplicam sem erro.</li>
+<li>Requisitos com divergência resolvida (ADR-001).</li>
+<li>Ambiente de teste disponível (JDK 25 e binários do PostgreSQL embarcado).</li>
+</ul>
+<h3>6.2 Critérios de saída (aceite do ciclo)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Critério</th>
+<th>Meta</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CS-1</td>
+<td>Casos P1 executados e aprovados</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>CS-2</td>
+<td>Taxa de aprovação geral</td>
+<td>≥ 95%</td>
+</tr>
+<tr>
+<td>CS-3</td>
+<td>Defeitos de severidade Crítica ou Alta em aberto</td>
+<td>0</td>
+</tr>
+<tr>
+<td>CS-4</td>
+<td>Requisitos com ao menos um caso executado e aprovado</td>
+<td>100% dos requisitos no escopo (4.1)</td>
+</tr>
+<tr>
+<td>CS-5</td>
+<td>Cobertura de código (JaCoCo)</td>
+<td>≥ 80% de linhas e ≥ 70% de ramos (verificado automaticamente no <code>verify</code>)</td>
+</tr>
+<tr>
+<td>CS-6</td>
+<td>Tempo de resposta (VAL-07)</td>
+<td>p95 &lt; 3.000 ms em todas as medições</td>
+</tr>
+<tr>
+<td>CS-7</td>
+<td>Força dos testes unitários (mutantes mortos ÷ mutantes cobertos)</td>
+<td>≥ 80%</td>
+</tr>
+</tbody></table>
+<h3>6.3 Critérios de suspensão e retomada</h3>
+<table>
+<thead>
+<tr>
+<th>Suspensão</th>
+<th>Retomada</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Build não compila ou migração falha</td>
+<td>Correção integrada e build verde</td>
+</tr>
+<tr>
+<td>Mais de 20% dos casos falhando por um mesmo defeito bloqueante</td>
+<td>Defeito corrigido e reteste do bloco</td>
+</tr>
+<tr>
+<td>Ambiente de banco indisponível</td>
+<td>Ambiente restabelecido</td>
+</tr>
+</tbody></table>
+<h2>7. Priorização (Tutorial, seção 13)</h2>
+<table>
+<thead>
+<tr>
+<th>Prioridade</th>
+<th>Interpretação</th>
+<th>Exemplos no PDV</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P1 — Crítica</td>
+<td>Integridade financeira, de estoque ou de acesso</td>
+<td>Bloqueio por saldo, concorrência, descontos, cancelamento, RBAC, login, caixa</td>
+</tr>
+<tr>
+<td>P2 — Alta</td>
+<td>Impede funções principais</td>
+<td>Cadastros, comissões, auditoria, contrato da API, desempenho</td>
+</tr>
+<tr>
+<td>P3 — Média</td>
+<td>Há alternativa de contorno</td>
+<td>Filtros de busca, mensagens, correções do desktop</td>
+</tr>
+<tr>
+<td>P4 — Baixa</td>
+<td>Baixo impacto</td>
+<td>Normalizações cosméticas (maiúsculas, máscara)</td>
+</tr>
+</tbody></table>
+<h2>8. Ambiente de teste</h2>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Versão</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Sistema operacional</td>
+<td>Windows 10 Pro 10.0.19045</td>
+</tr>
+<tr>
+<td>JDK</td>
+<td>OpenJDK 25.0.3 (JetBrains Runtime)</td>
+</tr>
+<tr>
+<td>Build</td>
+<td>Maven 3.9.16 (Maven Wrapper 3.3.4)</td>
+</tr>
+<tr>
+<td>Framework</td>
+<td>Spring Boot 4.1.2</td>
+</tr>
+<tr>
+<td>Banco</td>
+<td>PostgreSQL 17 embarcado (Zonky embedded-postgres 2.2.2, binários 17.11.0)</td>
+</tr>
+<tr>
+<td>Testes</td>
+<td>JUnit Jupiter 6.0.3, Mockito 5.23, AssertJ, MockMvc, spring-security-test, Cucumber 7.34.9, JaCoCo 0.8.15, PIT 1.30.1</td>
+</tr>
+</tbody></table>
+<h2>9. Riscos do processo de teste</h2>
+<table>
+<thead>
+<tr>
+<th>Risco</th>
+<th>Prob.</th>
+<th>Impacto</th>
+<th>Mitigação</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Sem Docker na máquina de testes</td>
+<td>Ocorreu</td>
+<td>Médio</td>
+<td>PostgreSQL embarcado real nos testes de integração; Docker fica como PEND-03</td>
+</tr>
+<tr>
+<td>Diferença entre o ambiente local (Windows) e a produção (Linux/AWS)</td>
+<td>Média</td>
+<td>Médio</td>
+<td><code>.gitattributes</code> para LF nos scripts; pipeline Linux criado em <code>.github/workflows/ci.yml</code> (PEND-05, roda no primeiro push)</td>
+</tr>
+<tr>
+<td>Requisitos conflitantes entre documentos</td>
+<td>Ocorreu</td>
+<td>Alto</td>
+<td>ADR-001 com precedência explícita; D-04 (base da comissão) depende de confirmação</td>
+</tr>
+<tr>
+<td>Front-end inexistente</td>
+<td>Certa</td>
+<td>Médio</td>
+<td>Testes concentrados na API; E2E de interface no próximo ciclo</td>
+</tr>
+<tr>
+<td>Falsa sensação de qualidade pela cobertura</td>
+<td>Média</td>
+<td>Alto</td>
+<td>Teste de mutação (PIT) para medir a força das asserções</td>
+</tr>
+<tr>
+<td>Testes instáveis (concorrência / tempo)</td>
+<td>Baixa</td>
+<td>Médio</td>
+<td>Largada sincronizada (<code>CountDownLatch</code>), medição com aquecimento e p95</td>
+</tr>
+</tbody></table>
+<h2>10. Papéis e responsabilidades</h2>
+<table>
+<thead>
+<tr>
+<th>Papel</th>
+<th>Responsabilidade</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Equipe de desenvolvimento</td>
+<td>Implementar, automatizar os testes e corrigir defeitos</td>
+</tr>
+<tr>
+<td>Revisor de testes (rodízio na equipe)</td>
+<td>Revisar os casos e as evidências; aprovar o relatório de execução</td>
+</tr>
+<tr>
+<td>Gerentes de loja (partes interessadas)</td>
+<td>Validar os cenários BDD (linguagem de negócio) na fase Beta</td>
+</tr>
+</tbody></table>
+<h2>11. Cronograma de testes</h2>
+<table>
+<thead>
+<tr>
+<th>Ciclo</th>
+<th>Conteúdo</th>
+<th>Data</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ciclo 1</td>
+<td>Backend: unitário, API, integração, BDD, segurança, concorrência, desempenho local, mutação</td>
+<td>26/10/2026 — <strong>executado</strong></td>
+</tr>
+<tr>
+<td>Ciclo 2</td>
+<td>Front-end: E2E de interface, usabilidade, push de alertas</td>
+<td>Após a entrega do front-end</td>
+</tr>
+<tr>
+<td>Ciclo 3</td>
+<td>Implantação Docker/AWS, carga com JMeter, testes exploratórios em ambiente de homologação</td>
+<td>Antes da Beta (01/03/2027)</td>
+</tr>
+<tr>
+<td>Aceitação</td>
+<td>Operação assistida em loja (Beta)</td>
+<td>01/03/2027 – 30/06/2027</td>
+</tr>
+</tbody></table>
+<h2>12. Gestão de defeitos</h2>
+<p>Ciclo de vida: <strong>Novo → Em análise → Corrigido → Retestado → Fechado</strong> (ou <strong>Reaberto</strong>).</p>
+<table>
+<thead>
+<tr>
+<th>Severidade</th>
+<th>Definição</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Crítica</td>
+<td>Perda ou corrupção de dados, prejuízo financeiro ou falha de segurança explorável</td>
+</tr>
+<tr>
+<td>Alta</td>
+<td>Função principal indisponível, sem contorno</td>
+</tr>
+<tr>
+<td>Média</td>
+<td>Comportamento incorreto com contorno, ou falha de segurança de baixo impacto</td>
+</tr>
+<tr>
+<td>Baixa</td>
+<td>Cosmético, documentação ou manutenção</td>
+</tr>
+</tbody></table>
+<p>Todo defeito corrigido exige: (1) reteste do caso que o encontrou e (2) regressão completa (<code>mvnw clean verify</code>).</p>
+<h2>13. Entregáveis</h2>
+<table>
+<thead>
+<tr>
+<th>Entregável</th>
+<th>Local</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Plano de Testes (este documento)</td>
+<td><code>docs/testes/01-plano-de-testes.md</code></td>
+</tr>
+<tr>
+<td>Especificação de casos de teste</td>
+<td><code>docs/testes/02-especificacao-de-casos-de-teste.md</code></td>
+</tr>
+<tr>
+<td>Cenários BDD (Gherkin)</td>
+<td><code>docs/testes/03-cenarios-bdd.md</code> e <code>pdv-web-api/src/test/resources/features/</code></td>
+</tr>
+<tr>
+<td>Matriz de rastreabilidade</td>
+<td><code>docs/testes/04-matriz-de-rastreabilidade.md</code></td>
+</tr>
+<tr>
+<td>Relatório de execução</td>
+<td><code>docs/testes/05-relatorio-de-execucao.md</code></td>
+</tr>
+<tr>
+<td>Relatório de defeitos</td>
+<td><code>docs/testes/06-relatorio-de-defeitos.md</code></td>
+</tr>
+<tr>
+<td>Roteiro de testes manuais e exploratórios</td>
+<td><code>docs/testes/07-roteiro-de-testes-manuais.md</code></td>
+</tr>
+<tr>
+<td>Evidências da execução</td>
+<td><code>docs/testes/evidencias/</code></td>
+</tr>
+<tr>
+<td>Testes automatizados</td>
+<td><code>pdv-web-api/src/test/</code></td>
+</tr>
+</tbody></table>
+<h2>14. Aprovação</h2>
+<table>
+<thead>
+<tr>
+<th>Papel</th>
+<th>Nome</th>
+<th>Data</th>
+<th>Assinatura</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Responsável pelo projeto</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Revisor de testes</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+</body></html>

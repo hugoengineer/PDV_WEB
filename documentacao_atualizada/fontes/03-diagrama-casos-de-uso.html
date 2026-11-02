@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Diagrama de Casos de Uso — PDV Web</title><link rel="stylesheet" href="estilo.css">
+<style>
+  .uc ellipse { fill: #eaf2fb; stroke: #1f5a96; stroke-width: 1.3; }
+  .uc.g ellipse { fill: #fdf0e3; stroke: #c2620a; }
+  .uc.s ellipse { fill: #e6f4ec; stroke: #1b8a5a; }
+  .uc text { font-size: 10px; fill: #12355b; text-anchor: middle; }
+  .uc text tspan.id { font-weight: 700; }
+  .ator line, .ator circle { stroke: #12355b; stroke-width: 1.8; fill: none; }
+  .ator text { font-size: 11.5px; font-weight: 700; fill: #12355b; text-anchor: middle; }
+  .assoc { stroke: #33404f; stroke-width: 1; }
+  .dep { stroke: #33404f; stroke-width: 1; stroke-dasharray: 5 3; fill: none; }
+  .rotulo { font-size: 9px; fill: #33404f; font-style: italic; }
+</style></head>
+<body>
+<div class="doc-cabecalho">
+  <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
+  <div class="titulo">Diagrama de Casos de Uso</div>
+  <div class="resumo">Atores, os 16 casos de uso (UC01–UC16) e seus relacionamentos — alinhado ao detalhamento dos casos de uso, à API v2.3 e ao sistema implementado.</div>
+</div>
+<table class="meta">
+  <tr><td>Documento</td><td>DOC-03 · Diagrama de Casos de Uso (UML)</td><td>Versão</td><td>2.0 — 28/10/2026</td></tr>
+  <tr><td>Equipe</td><td colspan="3">Hugo de Oliveira Guimarães, Jean Wictor, Cesar Franco</td></tr>
+  <tr><td>Substitui</td><td colspan="3">Diagrama da seção 3 da "Documentação do Projeto PDV Web" (24/08/2026), que tinha 14 casos de uso com outra numeração e a sangria atribuída ao Vendedor</td></tr>
+</table>
+
+<h1>1. Diagrama</h1>
+<figure>
+<svg viewBox="0 0 900 690" width="100%">
+  <defs>
+    <marker id="aberta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#33404f" stroke-width="1.3"/></marker>
+    <marker id="heranca" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="13" markerHeight="13" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#fff" stroke="#12355b" stroke-width="1.3"/></marker>
+  </defs>
+
+  <!-- Fronteira do sistema -->
+  <rect x="112" y="25" width="676" height="580" rx="10" fill="#fbfcfd" stroke="#12355b" stroke-width="1.5"/>
+  <text x="450" y="47" text-anchor="middle" font-size="13" font-weight="700" fill="#12355b">Sistema PDV Web</text>
+
+  <!-- Atores -->
+  <g class="ator" transform="translate(48,250)"><circle cx="0" cy="-30" r="10"/><line x1="0" y1="-20" x2="0" y2="12"/><line x1="-15" y1="-8" x2="15" y2="-8"/><line x1="0" y1="12" x2="-12" y2="34"/><line x1="0" y1="12" x2="12" y2="34"/><text y="52">Vendedor</text></g>
+  <g class="ator" transform="translate(852,330)"><circle cx="0" cy="-30" r="10"/><line x1="0" y1="-20" x2="0" y2="12"/><line x1="-15" y1="-8" x2="15" y2="-8"/><line x1="0" y1="12" x2="-12" y2="34"/><line x1="0" y1="12" x2="12" y2="34"/><text y="52">Gerente</text></g>
+
+  <!-- Generalização: Gerente herda Vendedor -->
+  <path d="M852 372 V650 H48 V302" fill="none" stroke="#12355b" stroke-width="1.3" marker-end="url(#heranca)"/>
+  <text x="450" y="644" text-anchor="middle" font-size="9.5" fill="#12355b" font-style="italic">Gerente herda todos os casos de uso do Vendedor (generalização)</text>
+
+  <!-- Associações do Vendedor (coluna esquerda) -->
+  <g class="assoc">
+    <line x1="64" y1="238" x2="136" y2="85"/><line x1="64" y1="240" x2="136" y2="150"/><line x1="64" y1="242" x2="136" y2="215"/>
+    <line x1="64" y1="244" x2="136" y2="280"/><line x1="64" y1="246" x2="136" y2="345"/><line x1="64" y1="248" x2="136" y2="410"/>
+    <line x1="64" y1="250" x2="136" y2="475"/><line x1="64" y1="252" x2="136" y2="540"/>
+  </g>
+  <!-- Associações do Gerente (coluna direita + UC07) -->
+  <g class="assoc">
+    <line x1="836" y1="318" x2="764" y2="115"/><line x1="836" y1="320" x2="764" y2="195"/><line x1="836" y1="322" x2="764" y2="275"/>
+    <line x1="836" y1="324" x2="764" y2="355"/><line x1="836" y1="326" x2="764" y2="435"/><line x1="836" y1="328" x2="764" y2="515"/>
+    <line x1="836" y1="330" x2="545" y2="440"/>
+  </g>
+
+  <!-- Coluna esquerda: Vendedor e Gerente -->
+  <g class="uc"><ellipse cx="230" cy="85" rx="95" ry="22"/><text x="230" y="89"><tspan class="id">UC01</tspan> Autenticar no sistema</text></g>
+  <g class="uc"><ellipse cx="230" cy="150" rx="95" ry="22"/><text x="230" y="154"><tspan class="id">UC02</tspan> Abrir caixa</text></g>
+  <g class="uc"><ellipse cx="230" cy="215" rx="95" ry="22"/><text x="230" y="219"><tspan class="id">UC03</tspan> Fechar caixa</text></g>
+  <g class="uc"><ellipse cx="230" cy="280" rx="95" ry="22"/><text x="230" y="284"><tspan class="id">UC04</tspan> Registrar venda</text></g>
+  <g class="uc"><ellipse cx="230" cy="345" rx="95" ry="22"/><text x="230" y="349"><tspan class="id">UC06</tspan> Aplicar cupom</text></g>
+  <g class="uc"><ellipse cx="230" cy="410" rx="95" ry="22"/><text x="230" y="414"><tspan class="id">UC08</tspan> Gerenciar clientes</text></g>
+  <g class="uc"><ellipse cx="230" cy="475" rx="95" ry="22"/><text x="230" y="473"><tspan class="id">UC09</tspan> Consultar estoque</text><text x="230" y="485">e alertas críticos</text></g>
+  <g class="uc"><ellipse cx="230" cy="540" rx="95" ry="22"/><text x="230" y="538"><tspan class="id">UC10</tspan> Relatório de</text><text x="230" y="550">comissões</text></g>
+
+  <!-- Coluna do meio: extensões da venda -->
+  <g class="uc s"><ellipse cx="450" cy="205" rx="95" ry="22"/><text x="450" y="209"><tspan class="id">UC05</tspan> Validar estoque</text></g>
+  <g class="uc g"><ellipse cx="450" cy="440" rx="95" ry="22"/><text x="450" y="438"><tspan class="id">UC07</tspan> Desconto direto</text><text x="450" y="450">do gerente</text></g>
+
+  <!-- Coluna direita: exclusivos do Gerente -->
+  <g class="uc g"><ellipse cx="670" cy="115" rx="95" ry="22"/><text x="670" y="119"><tspan class="id">UC11</tspan> Cancelar venda</text></g>
+  <g class="uc g"><ellipse cx="670" cy="195" rx="95" ry="22"/><text x="670" y="193"><tspan class="id">UC12</tspan> Gerenciar catálogo</text><text x="670" y="205">de produtos</text></g>
+  <g class="uc g"><ellipse cx="670" cy="275" rx="95" ry="22"/><text x="670" y="279"><tspan class="id">UC13</tspan> Gerenciar funcionários</text></g>
+  <g class="uc g"><ellipse cx="670" cy="355" rx="95" ry="22"/><text x="670" y="359"><tspan class="id">UC14</tspan> Emitir cupons</text></g>
+  <g class="uc g"><ellipse cx="670" cy="435" rx="95" ry="22"/><text x="670" y="433"><tspan class="id">UC15</tspan> Sangria / suprimento</text><text x="670" y="445">de caixa</text></g>
+  <g class="uc g"><ellipse cx="670" cy="515" rx="95" ry="22"/><text x="670" y="513"><tspan class="id">UC16</tspan> Consultar logs</text><text x="670" y="525">de auditoria</text></g>
+
+  <!-- include / extend -->
+  <path class="dep" d="M318 272 L357 214" marker-end="url(#aberta)"/>
+  <text class="rotulo" x="300" y="240">«include»</text>
+  <path class="dep" d="M230 323 L230 304" marker-end="url(#aberta)"/>
+  <text class="rotulo" x="238" y="318">«extend»</text>
+  <path class="dep" d="M398 422 L312 294" marker-end="url(#aberta)"/>
+  <text class="rotulo" x="356" y="378">«extend»</text>
+</svg>
+<figcaption>Figura 1 — Casos de uso do PDV Web. Azul: Vendedor e Gerente · laranja: exclusivos do Gerente · verde: executado automaticamente pelo Sistema.</figcaption>
+</figure>
+
+<h1 class="quebra">2. Atores</h1>
+<table>
+  <thead><tr><th style="width:15%">Ator</th><th>Descrição</th></tr></thead>
+  <tbody>
+    <tr><td><b>Vendedor</b></td><td>Operador da frente de caixa: abre e fecha o próprio caixa, registra vendas, aplica cupons, cadastra clientes, consulta estoque e a própria comissão.</td></tr>
+    <tr><td><b>Gerente</b></td><td>Herda todos os casos de uso do Vendedor e tem os privilégios administrativos: desconto direto, cancelamento com estorno, catálogo e estoque, funcionários e comissões, cupons, sangria/suprimento e auditoria.</td></tr>
+    <tr><td><b>Sistema</b></td><td>Executa regras automáticas durante as operações. No diagrama, aparece no UC05 (validação de estoque, em verde), incluído no registro da venda; por ser um caso de uso incluído, não tem ator desenhado.</td></tr>
+  </tbody>
+</table>
+
+<h1>3. Casos de uso e relacionamentos</h1>
+<table>
+  <thead><tr><th style="width:8%">UC</th><th style="width:30%">Nome</th><th style="width:20%">Ator principal</th><th>Relacionamentos e observações</th></tr></thead>
+  <tbody>
+    <tr><td>UC01</td><td>Autenticar no sistema</td><td>Vendedor, Gerente</td><td>Pré-requisito de todos os demais</td></tr>
+    <tr><td>UC02</td><td>Abrir caixa</td><td>Vendedor, Gerente</td><td>Pré-requisito do UC04</td></tr>
+    <tr><td>UC03</td><td>Fechar caixa</td><td>Vendedor, Gerente</td><td>Vendedor fecha o próprio caixa; Gerente fecha qualquer um</td></tr>
+    <tr><td>UC04</td><td>Registrar venda</td><td>Vendedor, Gerente</td><td><b>«include»</b> UC05; estendido por UC06 e UC07</td></tr>
+    <tr><td>UC05</td><td>Validar estoque</td><td>Sistema</td><td>Sempre executado dentro do UC04</td></tr>
+    <tr><td>UC06</td><td>Aplicar cupom de desconto</td><td>Vendedor, Gerente</td><td><b>«extend»</b> UC04 — opcional, quando há código de cupom</td></tr>
+    <tr><td>UC07</td><td>Aplicar desconto direto do gerente</td><td>Gerente</td><td><b>«extend»</b> UC04 — o Vendedor só pode solicitá-lo informando a senha de um Gerente</td></tr>
+    <tr><td>UC08</td><td>Cadastrar e gerenciar clientes</td><td>Vendedor, Gerente</td><td>Inativação exclusiva do Gerente</td></tr>
+    <tr><td>UC09</td><td>Consultar estoque e alertas críticos</td><td>Vendedor, Gerente</td><td>Somente leitura</td></tr>
+    <tr><td>UC10</td><td>Gerar relatório de comissões</td><td>Vendedor, Gerente</td><td>Vendedor: própria comissão · Gerente: todas</td></tr>
+    <tr><td>UC11</td><td>Cancelar venda</td><td>Gerente</td><td>Estorna os itens ao estoque</td></tr>
+    <tr><td>UC12</td><td>Gerenciar catálogo de produtos</td><td>Gerente</td><td>Inclui ajuste de estoque</td></tr>
+    <tr><td>UC13</td><td>Gerenciar funcionários</td><td>Gerente</td><td>Inclui parametrização do % de comissão</td></tr>
+    <tr><td>UC14</td><td>Emitir e gerenciar cupons</td><td>Gerente</td><td>Cupons usados no UC06</td></tr>
+    <tr><td>UC15</td><td>Realizar sangria / suprimento</td><td>Gerente</td><td>Requer caixa aberto (UC02)</td></tr>
+    <tr><td>UC16</td><td>Consultar logs de auditoria</td><td>Gerente</td><td>Registros gerados pelos demais casos de uso</td></tr>
+  </tbody>
+</table>
+
+<h1>4. O que mudou em relação ao diagrama anterior</h1>
+<table>
+  <thead><tr><th style="width:44%">Diagrama anterior (Documentação do Projeto)</th><th style="width:22%">Diagrama atual</th><th>Motivo</th></tr></thead>
+  <tbody>
+    <tr><td>UC-01 Autenticar no Sistema</td><td>UC01</td><td>—</td></tr>
+    <tr><td>UC-02 Efetuar Abertura e Fechamento de Caixa</td><td>UC02 e UC03</td><td>Separados, como no detalhamento e na API</td></tr>
+    <tr><td>UC-03 Realizar Sangria (ator: Vendedor)</td><td>UC15 (ator: Gerente)</td><td>A API v2.3 e o UC15 restringem a sangria ao Gerente; inclui suprimento</td></tr>
+    <tr><td>UC-04 Registrar Nova Venda</td><td>UC04 + UC05</td><td>Validação de estoque passou a ser caso de uso incluído</td></tr>
+    <tr><td>UC-05 Cadastrar e Consultar Clientes</td><td>UC08</td><td>Renumerado</td></tr>
+    <tr><td>UC-06 Consultar Estoque</td><td>UC09</td><td>Renumerado; unido ao UC-08</td></tr>
+    <tr><td>UC-07 Aplicar Cupom de Desconto</td><td>UC06</td><td>Renumerado; agora «extend» do UC04</td></tr>
+    <tr><td>UC-08 Visualizar Alerta de Estoque Crítico</td><td>UC09</td><td>O alerta faz parte da consulta de estoque</td></tr>
+    <tr><td>UC-09 Conceder Desconto Direto</td><td>UC07</td><td>Renumerado; agora «extend» do UC04</td></tr>
+    <tr><td>UC-10 Cancelar Venda com Estorno</td><td>UC11</td><td>Renumerado</td></tr>
+    <tr><td>UC-11 Gerenciar Produtos e Ajustar Estoque</td><td>UC12</td><td>Renumerado</td></tr>
+    <tr><td>UC-12 Gerenciar Funcionários e Comissões</td><td>UC13</td><td>Renumerado</td></tr>
+    <tr><td>UC-13 Emitir Cupons de Desconto</td><td>UC14</td><td>Renumerado</td></tr>
+    <tr><td>UC-14 Dashboard Financeiro e LOGs de Auditoria</td><td>UC10 e UC16</td><td>Separados: relatório de comissões (UC10) e auditoria (UC16)</td></tr>
+  </tbody>
+</table>
+</body></html>

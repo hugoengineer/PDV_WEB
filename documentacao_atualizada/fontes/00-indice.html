@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Índice — Documentação Atualizada do PDV Web</title><link rel="stylesheet" href="estilo.css"></head>
+<body>
+<div class="doc-cabecalho">
+  <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
+  <div class="titulo">Documentação Atualizada</div>
+  <div class="resumo">Índice dos documentos do projeto (versão 2.0) e da documentação de testes, com o que foi criado, o que foi atualizado e as incompatibilidades resolvidas.</div>
+</div>
+<table class="meta">
+  <tr><td>Data</td><td>28/10/2026</td><td>Versão</td><td>2.0</td></tr>
+  <tr><td>Equipe</td><td colspan="3">Hugo de Oliveira Guimarães, Jean Wictor, Cesar Franco</td></tr>
+  <tr><td>Base comum</td><td colspan="3">Todos os documentos foram alinhados ao Detalhamento dos Casos de Uso, à Documentação da API v2.3, ao ADR-001 e ao sistema implementado (<code>pdv-web-api</code> 2.3.0, 265 testes aprovados).</td></tr>
+</table>
+
+<h1>1. Documentos do projeto</h1>
+<table>
+  <thead><tr><th style="width:36%">Arquivo</th><th style="width:15%">Situação</th><th>Substitui / complementa</th></tr></thead>
+  <tbody>
+    <tr><td><code>01-requisitos-funcionais.pdf</code></td><td><span class="tag v">NOVO</span></td><td>Não existia (o Plano só citava "RF-01 ao RF-15"). Define RF-01 a RF-16 e unifica a numeração VAL-01 a VAL-08.</td></tr>
+    <tr><td><code>02-requisitos-nao-funcionais.pdf</code></td><td><span class="tag v">NOVO</span></td><td>Consolida RNF-01 a RNF-12, antes espalhados nas validações e no Plano de Projeto.</td></tr>
+    <tr><td><code>03-diagrama-casos-de-uso.pdf</code></td><td><span class="tag l">ATUALIZADO</span></td><td>Diagrama da seção 3 da Documentação do Projeto (14 casos de uso, outra numeração).</td></tr>
+    <tr><td><code>04-detalhamento-casos-de-uso.pdf</code></td><td><span class="tag l">ATUALIZADO</span></td><td>"Documentação de Casos de Uso — PDV Web" (mesma numeração; acrescenta exceções, pós-condições e suprimento).</td></tr>
+    <tr><td><code>05-diagrama-entidade-relacionamento.pdf</code></td><td><span class="tag l">ATUALIZADO</span></td><td>"User-Centric Sales Workflow" (DER) e o modelo de dados da Documentação do Projeto.</td></tr>
+    <tr><td><code>06-dicionario-de-dados.pdf</code></td><td><span class="tag l">ATUALIZADO</span></td><td>"Dicionário de Dados" de 13/09/2026.</td></tr>
+    <tr><td><code>07-tecnologias.pdf</code></td><td><span class="tag v">NOVO</span></td><td>Não havia documento de tecnologias; substitui a menção a MySQL da Documentação do Projeto.</td></tr>
+  </tbody>
+</table>
+
+<h1>2. Documentação de testes (pasta <code>testes/</code>)</h1>
+<table>
+  <thead><tr><th style="width:42%">Arquivo</th><th>Conteúdo</th></tr></thead>
+  <tbody>
+    <tr><td><code>testes/01-plano-de-testes.pdf</code></td><td>Escopo, abordagem, níveis, técnicas, critérios, ambiente, riscos e cronograma</td></tr>
+    <tr><td><code>testes/02-especificacao-de-casos-de-teste.pdf</code></td><td>Análise de requisitos, valores-limite, tabela de decisão, estados e catálogo dos 239 casos (inclui os do Ciclo 1.1 — robustez e do Ciclo 1.2 — banco)</td></tr>
+    <tr><td><code>testes/03-cenarios-bdd.pdf</code></td><td>16 cenários em Gherkin (linguagem de negócio), executados com Cucumber</td></tr>
+    <tr><td><code>testes/04-matriz-de-rastreabilidade.pdf</code></td><td>39 requisitos × casos de teste × resultado</td></tr>
+    <tr><td><code>testes/05-relatorio-de-execucao.pdf</code></td><td>Resultados dos Ciclos 1 (265/265), 1.1 (313/313) e 1.2 (320/320), cobertura, mutação, desempenho e carga, critérios de saída e recomendação</td></tr>
+    <tr><td><code>testes/06-relatorio-de-defeitos.pdf</code></td><td>Defeitos encontrados (inclusive DEF-WEB-003 a 006 do Ciclo 1.1), correções e reteste</td></tr>
+    <tr><td><code>testes/07-roteiro-de-testes-manuais.pdf</code></td><td>Testes manuais e exploratórios planejados (ainda não executados)</td></tr>
+  </tbody>
+</table>
+<p class="muted">Nota: a Matriz de Rastreabilidade (testes) usa os requisitos pelos nomes de origem (UC01–UC16, VAL-01–VAL-08, Regras, contrato da API). A correspondência UC ↔ RF é direta: UC<i>nn</i> ↔ RF-<i>nn</i>.</p>
+
+<h1>3. Documentos originais (pasta <code>projeto_pdv_web/</code>)</h1>
+<table>
+  <thead><tr><th style="width:44%">Documento original</th><th style="width:16%">Situação</th><th>Observação</th></tr></thead>
+  <tbody>
+    <tr><td>Documentação da API v2.3</td><td class="ok">Vigente</td><td>Contrato implementado; é a referência da interface</td></tr>
+    <tr><td>Documentação de Casos de Uso</td><td class="warn">Substituído por DOC-04</td><td>Conteúdo mantido e ampliado</td></tr>
+    <tr><td>Dicionário de Dados</td><td class="warn">Substituído por DOC-06</td><td></td></tr>
+    <tr><td>User-Centric Sales Workflow (DER)</td><td class="warn">Substituído por DOC-05</td><td></td></tr>
+    <tr><td>Documentação do Projeto PDV Web</td><td class="warn">Parcialmente substituído</td><td>Seções 3 (diagrama) → DOC-03; 4 e 5 (modelo de dados e script MySQL) → DOC-05/06; validações → DOC-01, seção 4</td></tr>
+    <tr><td>Plano de Projeto</td><td class="ok">Vigente</td><td>Citação "RF-01 ao RF-15" deve passar a "RF-01 ao RF-16" (DOC-01); cronograma com datas fora de ordem a corrigir</td></tr>
+    <tr><td>Regras de Sistema / Tabela de Planejamento</td><td class="ok">Vigentes</td><td>Regras implementadas; numeração das validações complementada pela VAL-08 (DOC-01)</td></tr>
+    <tr><td>Tutorial de Cenários de Testes</td><td class="ok">Referência</td><td>Base do processo de testes</td></tr>
+  </tbody>
+</table>
+
+<h1>4. Incompatibilidades resolvidas</h1>
+<table>
+  <thead><tr><th style="width:34%">Incompatibilidade</th><th>Resolução</th><th style="width:16%">Onde</th></tr></thead>
+  <tbody>
+    <tr><td>Diagrama com 14 casos de uso e numeração diferente do detalhamento e da API</td><td>Diagrama refeito com UC01–UC16; tabela de correspondência com a numeração antiga</td><td>DOC-03</td></tr>
+    <tr><td>Sangria atribuída ao Vendedor no diagrama × exclusiva do Gerente na API</td><td>Sangria/suprimento (UC15) exclusivos do Gerente</td><td>DOC-03, DOC-04</td></tr>
+    <tr><td>DER e dicionário sem campos usados pela API (estoque mínimo, <code>ativo</code>, tipo de desconto…)</td><td>Modelo completo gerado a partir do esquema real (11 tabelas, 102 colunas, incluindo as tabelas de segurança da V3)</td><td>DOC-05, DOC-06</td></tr>
+    <tr><td>Entidade GERENTE separada e campo <code>tipo</code> × perfil do usuário na API</td><td>Tabela única <code>usuarios</code> com <code>perfil</code></td><td>DOC-05, DOC-06</td></tr>
+    <tr><td>Estoque tripartido e tabela <code>sangrias</code> (Documentação) × <code>estoque_atual</code> e MOVIMENTACAO_CAIXA (API/DER)</td><td><code>estoque_atual</code> + <code>estoque_minimo</code>; <code>movimentacoes_caixa</code>; reserva no carrinho adiada (VAL-08 parcial)</td><td>DOC-05, ADR-001</td></tr>
+    <tr><td>Script do banco em MySQL × sistema em PostgreSQL</td><td>PostgreSQL 17 com Flyway</td><td>DOC-07, DOC-05</td></tr>
+    <tr><td>Validações: a Tabela de Planejamento vai até VAL-07, com nomes diferentes; a Documentação do Projeto acrescenta VAL-08</td><td>Numeração unificada VAL-01 a VAL-08 (a numeração de VAL-01 a VAL-07 coincide nos dois documentos)</td><td>DOC-01, seção 4</td></tr>
+    <tr><td>Plano cita RF-01 a RF-15, sem lista</td><td>Lista criada: RF-01 a RF-16 (um por caso de uso)</td><td>DOC-01</td></tr>
+  </tbody>
+</table>
+
+<div class="nota"><b>Base de cálculo da comissão:</b> a Tabela de Regras (1.1.1.11) diz "sobre o valor bruto";
+o exemplo da API v2.3 calcula sobre o valor líquido (R$ 10,75 = 5% de R$ 215,00). O sistema passou a aceitar as duas bases pela variável <code>PDV_COMISSAO_BASE</code> (padrão <code>LIQUIDO</code>, como a API; <code>BRUTO</code> daria R$ 12,50 no mesmo exemplo). A equipe só precisa escolher o valor na implantação (ADR-001, D-04).</div>
+</body></html>

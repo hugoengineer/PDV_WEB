@@ -1,0 +1,43 @@
+# Integração contínua: roda toda a bateria de testes em Linux a cada push e pull request.
+# O PostgreSQL dos testes é embarcado (binários oficiais), então o runner não precisa de banco nem de Docker.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    name: PDV Web API — testes, cobertura e BDD
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pdv-web-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Testes + verificação de cobertura (mín. 80% linhas / 70% ramos)
+        run: ./mvnw -B clean verify
+
+      - name: Evidências da execução
+        if: always()
+        run: bash scripts/gerar-evidencias.sh || true
+
+      - name: Publicar relatórios
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-de-teste
+          path: |
+            pdv-web-api/target/surefire-reports/
+            pdv-web-api/target/site/jacoco/
+            pdv-web-api/target/cucumber/
+            pdv-web-api/target/desempenho.csv
+            pdv-web-api/target/evidencias/
+

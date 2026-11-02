@@ -1,0 +1,793 @@
+<!doctype html>
+<!--
+  Modelo do Documento Geral do PDV Web (gerado em PDF por gerar-documento-geral.mjs).
+  A ordem das seções segue o arquivo Exemplo.pdf: capa → sumário → 1. Levantamento de Requisitos →
+  2. Projeto → 3. Qualidade e Testes. O conteúdo vem da apresentação do projeto e dos documentos 01 a 07.
+
+  Marcadores processados pelo gerador:
+    <!-​-incluir:NOME#1,3 SECAO-​->  insere as seções "1." e "3." do documento NOME.html, renumeradas como SECAO.1, SECAO.2…
+                                    (sem "#…" insere todas as seções; o resumo do cabeçalho vira o parágrafo de abertura;
+                                    "SECAO@3" começa a numeração em SECAO.3; "sem-titulo" insere só o conteúdo)
+                                    ("#1,2+" inclui também o resumo do cabeçalho)
+    <!-​-md:CAMINHO#Título A|Título B SECAO-​->  insere as seções "## Título" de um Markdown, numeradas como SECAO.1, SECAO.2…
+    <!-​-fichas:NOME#UC01,UC04-​->   insere só as fichas desses casos de uso
+    <!-​-figura:NOME-​->             insere o diagrama (primeira figura) do documento
+    <!-​-dicionario:NOME-​->         monta o dicionário de dados no formato do Exemplo a partir do documento 06
+    <!-​-requisitos:NOME-​->         lista os requisitos funcionais com a descrição de cada um (documento 01)
+    data-toc="0|1|2"                entrada do sumário (parte, seção, subseção); o número da página é calculado
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>PDV Web — Documentação do Projeto de Software</title>
+<!--estilos-->
+<style>
+  body { font-size: 9.4pt; }
+  .pagina { break-before: page; }
+
+  /* Capa (mesmo arranjo do Exemplo) */
+  .capa { height: 262mm; display: flex; flex-direction: column; padding: 30mm 8mm 0; }
+  .capa .curso { font-size: 10pt; letter-spacing: 1.5px; text-transform: uppercase; color: var(--cinza); }
+  .capa .titulo { font-size: 46pt; font-weight: 800; color: var(--azul); line-height: 1.05; margin: 12mm 0 5mm; }
+  .capa .subtitulo { font-size: 16pt; color: var(--texto); }
+  .capa .linha { border-top: 1.5px solid var(--linha); margin: 9mm 0 0; }
+  .capa .descricao { font-size: 10.5pt; color: #33404f; max-width: 150mm; margin-top: 7mm; }
+  .capa .integrantes { margin-top: auto; font-size: 11pt; line-height: 1.7; }
+  .capa .integrantes b { display: block; font-size: 10.5pt; color: var(--azul); }
+  .capa .versao { margin-top: 6mm; font-size: 9pt; color: var(--cinza); }
+  .capa .dica { margin-top: 18mm; font-size: 8.5pt; color: var(--cinza); }
+
+  /* Sumário */
+  .titulo-pagina { font-size: 15pt; font-weight: 700; color: var(--azul); padding-bottom: 2mm; border-bottom: 1px solid var(--linha); margin: 0 0 9mm; }
+  .sumario a { display: flex; align-items: baseline; color: var(--texto); text-decoration: none; }
+  .sumario a .txt { white-space: nowrap; }
+  .sumario a .pontos { flex: 1; border-bottom: 1.5px dotted #b7c1cd; margin: 0 2mm; transform: translateY(-1mm); }
+  .sumario a .pg { min-width: 7mm; text-align: right; }
+  .sumario .n0 { font-weight: 700; font-size: 11pt; margin: 6mm 0 2.5mm; }
+  .sumario .n0:first-child { margin-top: 0; }
+  .sumario .n1 { font-size: 10pt; margin: 0 0 2.4mm 6mm; }
+  .sumario .n2 { font-size: 8.8pt; margin: 0 0 2.2mm 13mm; }
+  .sumario .num { display: inline-block; min-width: 9mm; }
+  .sumario .n2 .num { min-width: 11mm; }
+
+  /* Páginas divisórias das partes */
+  .divisor { break-before: page; height: 255mm; display: flex; flex-direction: column; justify-content: center; padding: 0 8mm; }
+  .divisor .grande { font-size: 100pt; font-weight: 800; color: #cbd5e1; line-height: 1; }
+  .divisor h1 { font-size: 30pt; color: var(--azul); border: 0; margin: 6mm 0 0; padding: 0 0 6mm; }
+  .divisor .traco { width: 70mm; border-top: 1.5px solid var(--linha); margin-bottom: 7mm; }
+  .divisor .itens a { display: block; font-size: 11pt; color: var(--cinza); margin-bottom: 2mm; }
+  .divisor .itens span { display: inline-block; min-width: 10mm; }
+
+  /* Títulos do corpo */
+  h2.secao { font-size: 16pt; color: var(--azul); margin: 0 0 5mm; padding-bottom: 2mm; border-bottom: 2.5px solid var(--azul2); }
+  h2.secao.pagina { break-before: page; }
+  h3 { font-size: 12.5pt; color: var(--azul); margin: 6mm 0 2.5mm; padding-bottom: 1.2mm; border-bottom: 1.5px solid var(--linha); break-after: avoid; }
+  h3.sub { font-size: 14pt; border-bottom: 2px solid var(--azul2); }
+  h4 { font-size: 11pt; color: var(--azul2); margin: 4.5mm 0 2mm; break-after: avoid; }
+  h5 { font-size: 10pt; color: var(--azul); margin: 3.5mm 0 1.5mm; break-after: avoid; }
+  h6 { font-size: 9.5pt; color: var(--azul); margin: 3mm 0 1mm; break-after: avoid; }
+  .lead { font-size: 10.2pt; color: #33404f; }
+  .marca { position: absolute; color: #fff; font-size: 2px; }
+
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3.5mm; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; }
+  .kpi { border-radius: 6px; padding: 3mm; text-align: center; background: var(--fundo); border: 1px solid var(--linha); break-inside: avoid; }
+  .kpi .v { font-size: 17pt; font-weight: 700; color: var(--azul); line-height: 1.1; }
+  .kpi .r { font-size: 7.8pt; color: var(--cinza); margin-top: 1mm; }
+  .kpi.verde .v { color: var(--verde); }
+  .fluxo { display: flex; align-items: stretch; margin: 2mm 0 4mm; break-inside: avoid; }
+  .fluxo .passo { flex: 1; background: var(--fundo); border: 1px solid var(--linha); border-radius: 5px; padding: 2.5mm; font-size: 8pt; text-align: center; }
+  .fluxo .passo b { display: block; color: var(--azul); font-size: 9.2pt; margin-bottom: .8mm; }
+  .fluxo .seta { width: 6mm; display: flex; align-items: center; justify-content: center; color: var(--azul2); font-weight: 700; font-size: 13pt; }
+  pre .k { color: #8fd3ff; } pre .s { color: #ffd38a; } pre .c { color: #8ea4b8; }
+  .mono { font-family: Consolas, "Courier New", monospace; font-size: 8pt; }
+  td.c, th.c { text-align: center; } td.d, th.d { text-align: right; }
+  table.lista-rf { font-size: 7.9pt; }
+  table.lista-rf td { padding: .8mm 1.8mm; }
+  .remissao { font-size: 8.5pt; color: var(--cinza); border-top: 1px dashed var(--linha); padding-top: 1.5mm; }
+
+  /* Dicionário de dados (formato do Exemplo) */
+  .tabela-dic { break-inside: avoid; margin-bottom: 4mm; }
+  .tabela-dic h4 { color: var(--azul); font-size: 10.5pt; margin: 0; }
+  .tabela-dic .desc-tabela { font-size: 8.3pt; font-style: italic; color: var(--cinza); margin-bottom: 1.2mm; }
+  .tabela-dic table { font-size: 7.8pt; margin-bottom: 0; }
+  .tabela-dic th { background: #e2e8f0; color: var(--azul); }
+  .tabela-dic td { padding: .9mm 2mm; }
+
+  /* Tecnologias (formato do Exemplo) */
+  .tec { display: flex; justify-content: space-between; align-items: baseline; border: 1px solid var(--linha); border-left: 5px solid var(--azul);
+         border-radius: 4px; background: var(--fundo); padding: 1.6mm 4mm; margin-bottom: 1.6mm; break-inside: avoid; }
+  .tec b { font-size: 10.5pt; color: var(--azul); }
+  .figura-compacta svg { max-height: 68mm; }
+  .tec span { font-size: 8.6pt; color: var(--cinza); text-align: right; max-width: 60%; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ CAPA -->
+<section class="capa">
+  <div class="curso">Sistema de Ponto de Venda (PDV) Web</div>
+  <div class="titulo">PDV Web</div>
+  <div class="subtitulo">Documentação do Projeto de Software</div>
+  <div class="linha"></div>
+  <div class="descricao">Solução de ponto de venda em nuvem: controle de vendas, estoque, caixa, descontos e comissões,
+    com segurança por perfil e qualidade comprovada por testes.</div>
+  <div class="integrantes">
+    <b>Integrantes</b>
+    Hugo de Oliveira Guimarães<br>Jean Wictor<br>Cesar Franco
+  </div>
+  <div class="versao">Backend <code>pdv-web-api</code> 2.3.0 · Documentação versão 2.0 · <!--data--></div>
+  <div class="dica">Clique em qualquer item do sumário para ir direto à seção.</div>
+</section>
+
+<!-- ============================================================ SUMÁRIO -->
+<section class="pagina" id="sumario">
+  <div class="titulo-pagina">Sumário</div>
+  <div class="sumario"><!--sumario--></div>
+</section>
+
+<!-- ============================================================ APRESENTAÇÃO -->
+<h2 class="secao pagina" id="apresentacao" data-toc="0">Apresentação do Projeto</h2>
+<p class="lead">O <b>PDV Web</b> é uma solução de ponto de venda para o varejo, focada em processar vendas com rapidez,
+controlar estoque e caixa com rigor e impedir perdas financeiras por descontos indevidos, vendas sem saldo ou
+cancelamentos sem controle. O sistema opera como aplicação web, containerizada em Docker e preparada para hospedagem
+em nuvem (AWS EC2), com duas visões de uso: <b>Vendedor</b> e <b>Gerente</b>.</p>
+
+<div class="grid3">
+  <div class="card destaque"><h4 style="margin-top:0">O problema</h4>
+    Divergência entre estoque físico e sistema, descontos concedidos sem autorização, comissões calculadas à mão
+    e nenhum registro de quem fez cada operação sensível.</div>
+  <div class="card destaque"><h4 style="margin-top:0">O objetivo</h4>
+    Uma frente de caixa web com controle de acesso por perfil, estoque atualizado em tempo real, caixa com
+    abertura, sangria e fechamento, e comissão automática por vendedor.</div>
+  <div class="card destaque"><h4 style="margin-top:0">A solução</h4>
+    Uma API REST segura (Spring Boot + PostgreSQL), executando em containers Docker, com todas as regras de
+    negócio no servidor e 320 execuções de testes automatizados aprovadas.</div>
+</div>
+
+<h3>Propósito, justificativa e status</h3>
+<table>
+  <tbody>
+    <tr><td style="width:20%"><b>Propósito</b></td><td>Otimizar o processo de vendas no varejo, com controle rigoroso de estoque e fluxo de caixa e atualização instantânea em nuvem.</td></tr>
+    <tr><td><b>Objetivo geral</b></td><td>Criar uma solução web de PDV eficiente para operação rápida em loja física e gestão financeira e operacional centralizada.</td></tr>
+    <tr><td><b>Justificativa</b></td><td>O comércio precisa de uma frente de caixa web flexível que elimine divergências entre o estoque físico e o sistema, automatize os acertos de comissões e restrinja a concessão indiscriminada de descontos, garantindo a integridade financeira do negócio.</td></tr>
+    <tr><td><b>Status</b></td><td>Em andamento — início em 20/06/2026, término previsto em 30/06/2027. Backend concluído e testado (Ciclos 1, 1.1 e 1.2); próxima etapa: front-end e implantação na AWS.</td></tr>
+    <tr><td><b>Equipe</b></td><td>Hugo de Oliveira Guimarães, Jean Wictor e Cesar Franco</td></tr>
+    <tr><td><b>Partes interessadas</b></td><td>Gerentes de loja, vendedores/operadores de caixa, suporte técnico e administradores</td></tr>
+    <tr><td><b>Custo de referência</b></td><td>R$ 5.000,00 (infraestrutura de nuvem AWS EC2 e ambiente de containers)</td></tr>
+  </tbody>
+</table>
+
+<h3>Objetivos específicos atendidos</h3>
+<table>
+  <thead><tr><th style="width:44%">Objetivo (Plano de Projeto, 1.3)</th><th>Como foi atendido</th><th style="width:11%">Situação</th></tr></thead>
+  <tbody>
+    <tr><td>Controle de acesso seguro com CPF e senha</td><td>Login por CPF, senha em hash BCrypt, token JWT de 24 h</td><td class="ok">Atendido</td></tr>
+    <tr><td>Saldo de estoque e alertas de nível crítico em tempo real</td><td>Baixa na própria transação da venda; alerta quando estoque ≤ mínimo</td><td class="ok">Atendido*</td></tr>
+    <tr><td>Impedir vendas com saldo insuficiente ou zerado</td><td>Validação com bloqueio de linha no banco, inclusive para vendas simultâneas</td><td class="ok">Atendido</td></tr>
+    <tr><td>Cancelamentos, estornos e descontos diretos só com o Gerente</td><td>Perfis verificados no filtro de segurança e no serviço; senha do gerente para desconto do vendedor</td><td class="ok">Atendido</td></tr>
+    <tr><td>Cálculo automático da comissão por vendedor</td><td>Percentual do vendedor congelado em cada venda; relatório por período</td><td class="ok">Atendido</td></tr>
+  </tbody>
+</table>
+<p class="muted" style="font-size:8.5pt">* O backend entrega o alerta (na resposta da venda e na consulta de estoque). A notificação visual nas telas depende do front-end.</p>
+
+<h3>Escopo</h3>
+<div class="grid2">
+  <div class="card"><h4 style="margin-top:0"><span class="tag v">INCLUÍDO</span></h4>
+    <ul><li>Login, sessão e troca de senha</li><li>Abertura e fechamento de caixa, sangria e suprimento</li>
+    <li>Frente de caixa: venda por código/produto, cliente PF/PJ ou consumidor padrão, 5 formas de pagamento</li>
+    <li>Cupons de desconto e desconto direto do gerente</li><li>Cancelamento com estorno automático</li>
+    <li>Catálogo, clientes, funcionários e comissões</li><li>LOG de auditoria de todas as ações sensíveis</li>
+    <li>Containerização com Docker Compose (alvo AWS EC2)</li></ul></div>
+  <div class="card"><h4 style="margin-top:0"><span class="tag l">FORA DESTA FASE</span></h4>
+    <ul><li>Integração TEF / gateway de cartão (pagamentos são simulados)</li><li>Emissão de NF-e / NFC-e</li>
+    <li>Interface web (front-end) — próxima etapa</li><li>Reserva de estoque no carrinho (estoque tripartido)</li></ul></div>
+</div>
+
+<h3>Premissas, restrições e riscos</h3>
+<div class="grid3">
+  <div class="card"><h4 style="margin-top:0">Premissas</h4><ul>
+    <li>Autenticação por CPF e senha obrigatória desde o primeiro acesso</li>
+    <li>Conexão contínua com a internet/nuvem para atualização simultânea dos dados</li>
+    <li>Dois atores principais: Vendedor e Gerente</li></ul></div>
+  <div class="card"><h4 style="margin-top:0">Restrições</h4><ul>
+    <li>Cancelamento de vendas concluídas é exclusivo do Gerente</li>
+    <li>Não são permitidas vendas com estoque zerado ou acima do disponível</li></ul></div>
+  <div class="card"><h4 style="margin-top:0">Riscos e mitigação</h4><ul>
+    <li><b>Segurança:</b> acesso indevido → CPF/senha com hash, JWT, perfis</li>
+    <li><b>Estoque:</b> vendas simultâneas → bloqueio de linha no banco</li>
+    <li><b>Financeiro:</b> descontos indevidos → só por cupom ou autorização do Gerente</li></ul></div>
+</div>
+
+<h3>O projeto em números</h3>
+<div class="grid4">
+  <div class="kpi"><div class="v">16</div><div class="r">casos de uso implementados (UC01–UC16)</div></div>
+  <div class="kpi"><div class="v">40</div><div class="r">rotas na API REST</div></div>
+  <div class="kpi verde"><div class="v">320/320</div><div class="r">execuções de testes automatizados aprovadas</div></div>
+  <div class="kpi verde"><div class="v">96,6%</div><div class="r">das linhas de código cobertas por testes</div></div>
+  <div class="kpi"><div class="v">8</div><div class="r">validações de sistema (VAL-01 a VAL-08)</div></div>
+  <div class="kpi"><div class="v">11</div><div class="r">tabelas com restrições e gatilhos de integridade</div></div>
+  <div class="kpi verde"><div class="v">100%</div><div class="r">dos erros simulados detectados (teste de mutação)</div></div>
+  <div class="kpi verde"><div class="v">190 ms</div><div class="r">p95 com 20 operadores simultâneos; limite: 3 s</div></div>
+</div>
+
+<h3>Do sistema desktop ao PDV Web</h3>
+<p>O projeto começou como um <b>sistema desktop em JavaFX</b> ligado diretamente ao PostgreSQL. Ele já tinha cadastro de
+clientes (com busca automática de CNPJ), produtos, vendedores, tela de vendas com carrinho, histórico e relatório de comissões.
+A documentação do projeto, porém, pede uma <b>aplicação web</b> com API REST, perfis de acesso, controle de caixa e auditoria.</p>
+<div class="fluxo">
+  <div class="passo"><b>Desktop (legado)</b>JavaFX + JDBC<br>uma máquina, sem perfis</div>
+  <div class="seta">→</div>
+  <div class="passo"><b>Análise</b>leitura do código e dos 9 documentos do projeto</div>
+  <div class="seta">→</div>
+  <div class="passo"><b>Correções</b>9 defeitos no desktop, 7 corrigidos</div>
+  <div class="seta">→</div>
+  <div class="passo"><b>PDV Web</b>API REST v2.3 completa, testada e documentada</div>
+</div>
+<h4>Defeitos encontrados e corrigidos no desktop</h4>
+<table>
+  <thead><tr><th style="width:15%">ID</th><th>Problema</th><th style="width:11%">Gravidade</th><th style="width:30%">Correção</th></tr></thead>
+  <tbody>
+    <tr><td>DEF-DSK-001</td><td>O estoque podia ficar negativo, inclusive com duas vendas ao mesmo tempo</td><td><span class="tag r">Crítica</span></td><td>Baixa condicional no banco + validação no carrinho</td></tr>
+    <tr><td>DEF-DSK-002</td><td>Telas de clientes, produtos e vendedores não abriam fora do Windows / em JAR</td><td><span class="tag r">Alta</span></td><td>Nomes dos arquivos de tela corrigidos</td></tr>
+    <tr><td>DEF-DSK-003</td><td>Relatório por vendedor sempre vazio (coluna inexistente)</td><td><span class="tag l">Média</span></td><td>Consulta SQL corrigida</td></tr>
+    <tr><td>DEF-DSK-004</td><td>Editar cliente perdia bairro, estado, UF e CEP; a tela não tinha a opção de editar</td><td><span class="tag l">Média</span></td><td>UPDATE completo + botão Atualizar</td></tr>
+    <tr><td>DEF-DSK-006</td><td>Não existia script do banco no repositório</td><td><span class="tag l">Média</span></td><td><code>database/schema.sql</code></td></tr>
+    <tr><td>DEF-DSK-005/008</td><td>Comando de execução documentado não funcionava; recurso de banco não fechado</td><td><span class="tag g">Baixa</span></td><td>Plugin JavaFX, Maven Wrapper e try-with-resources</td></tr>
+    <tr><td>DEF-DSK-007/009</td><td>Valores em <code>double</code>; CPF <code>000.000.000-00</code> aceito em qualquer cadastro</td><td><span class="tag l">Média</span> <span class="tag g">Baixa</span></td><td>Mantidos no legado; resolvidos no PDV Web</td></tr>
+  </tbody>
+</table>
+<div class="info">O desktop permanece como <b>versão legada</b>. Os valores monetários em <code>double</code> e a exceção do CPF
+<code>000.000.000-00</code> foram mantidos nele e resolvidos no PDV Web, que usa <code>BigDecimal</code> e reserva esse documento ao "Consumidor Padrão".
+O reteste manual das correções (RT-DSK-01 a 07) está roteirizado e pendente.</div>
+<h4>Documentação analisada</h4>
+<p>Plano de Projeto, Regras de Sistema, Tabela de Planejamento, Documentação do Projeto, Casos de Uso, Dicionário de Dados,
+fluxo do usuário (DER), Documentação da API v2.3 e o Tutorial de Cenários de Testes. Onde os documentos divergiam, a decisão
+foi registrada no ADR-001 (<code>docs/arquitetura/</code>).</p>
+
+<!-- ============================================================ 1 LEVANTAMENTO DE REQUISITOS -->
+<section class="divisor">
+  <div class="grande">1</div>
+  <h1 id="parte1" data-toc="0" data-num="1.">Levantamento de Requisitos</h1>
+  <div class="traco"></div>
+  <div class="itens"><!--itens:parte1--></div>
+</section>
+
+<h2 class="secao pagina" id="s1-1" data-toc="1" data-num="1.1">Requisitos Funcionais</h2>
+<!--incluir:01-requisitos-funcionais#1+ 1.1-->
+<h3>1.1.2 Lista de requisitos</h3>
+<!--requisitos:01-requisitos-funcionais-->
+<p class="remissao">Validações VAL-01 a VAL-08: seção 1.6. Regras, critérios de aceitação e testes de cada RF: <code>01-requisitos-funcionais.pdf</code>.</p>
+
+<h2 class="secao pagina" id="s1-2" data-toc="1" data-num="1.2">Requisitos Não Funcionais</h2>
+<!--incluir:02-requisitos-nao-funcionais#1+ 1.2-->
+<p class="remissao">Os critérios, resultados medidos e testes de cada requisito estão no documento <code>02-requisitos-nao-funcionais.pdf</code>.
+Desde o Ciclo 1.2, o RNF-09 (Docker) foi executado e validado localmente pelo roteiro RT-DEP; falta a implantação na AWS.</p>
+
+<h2 class="secao pagina" id="s1-3" data-toc="1" data-num="1.3">Diagrama de Caso de Uso</h2>
+<!--incluir:03-diagrama-casos-de-uso#1,2 1.3-->
+
+<h2 class="secao pagina" id="s1-4" data-toc="1" data-num="1.4">Detalhamento de Caso de Uso</h2>
+<h3 class="sub" id="s1-4-1" data-toc="2" data-num="1.4.1">Dicionário de Casos de Uso</h3>
+<p>Inventário completo dos casos de uso do PDV Web, com o ator principal e os relacionamentos de cada um. A correspondência
+com os requisitos funcionais é direta: UCnn ↔ RF-nn.</p>
+<!--incluir:03-diagrama-casos-de-uso#3 sem-titulo-->
+
+<h4>Funcionalidades por caso de uso</h4>
+<p>Cada funcionalidade corresponde a um caso de uso (UC01–UC16) e a rotas da API v2.3.</p>
+<div class="grid2">
+  <div class="card"><h5 style="margin-top:0">Autenticação <span class="tag g">UC01</span></h5>
+    <ul><li>Login por CPF (com ou sem máscara) e senha</li><li>Token JWT válido por 24 h, com renovação (<code>refresh-token</code>)</li>
+    <li>Logout invalida o token na hora, mesmo após reinício da API</li><li>Troca de senha com conferência da senha atual (mín. 8 caracteres)</li>
+    <li>Tentativas de login com falha registradas na auditoria; 5 erros bloqueiam por 15 min</li></ul>
+    <span class="muted mono">POST /auth/login · /refresh-token · /logout · PATCH /auth/alterar-senha</span></div>
+  <div class="card"><h5 style="margin-top:0">Controle de caixa <span class="tag g">UC02 · UC03 · UC15</span></h5>
+    <ul><li>Abertura com fundo de troco; só um caixa aberto por operador</li><li>Saldo em dinheiro do turno em tempo real</li>
+    <li>Sangria (retirada) e suprimento (reforço) com justificativa, só pelo gerente</li><li>Sangria nunca maior que o dinheiro no caixa</li>
+    <li>Fechamento: valor contado × esperado, com a diferença (sobra/falta)</li></ul>
+    <span class="muted mono">/caixas/abertura · /caixas/atual · /{id}/sangria · /{id}/suprimento · /{id}/fechamento</span></div>
+  <div class="card"><h5 style="margin-top:0">Registro de venda <span class="tag g">UC04 · UC05</span></h5>
+    <ul><li>Vários itens; o mesmo produto repetido é somado</li><li>Cliente cadastrado ou "Consumidor Padrão"</li>
+    <li>Pagamento: Dinheiro, PIX, Cartão de Crédito, Cartão de Débito ou Crediário</li><li>Estoque validado e baixado na mesma transação; um item sem saldo cancela a venda inteira</li>
+    <li>Preço sempre do catálogo (o enviado é ignorado)</li><li>Resposta traz alertas de estoque crítico</li></ul>
+    <span class="muted mono">POST /vendas · GET /vendas · GET /vendas/{id}</span></div>
+  <div class="card"><h5 style="margin-top:0">Descontos <span class="tag g">UC06 · UC07 · UC14</span></h5>
+    <ul><li>Cupom percentual ou de valor fixo, com período de validade</li><li>Desconto direto do gerente em R$ fixo</li>
+    <li>Ordem: primeiro o cupom, depois o desconto direto sobre o restante</li><li>Vendedor precisa informar a senha de um gerente; o gerente que autorizou fica registrado</li>
+    <li>O total nunca fica negativo</li></ul>
+    <span class="muted mono">/cupons (CRUD) · campos cupom_codigo e desconto_direto_gerente na venda</span></div>
+  <div class="card"><h5 style="margin-top:0">Cancelamento e estorno <span class="tag g">UC11</span></h5>
+    <ul><li>Exclusivo do gerente, com motivo obrigatório</li><li>Os itens voltam automaticamente ao estoque</li>
+    <li>A venda sai dos totais do caixa e das comissões</li><li>Venda cancelada não pode ser cancelada de novo</li>
+    <li>Vendas são imutáveis: não existe edição nem exclusão</li></ul>
+    <span class="muted mono">POST /vendas/{id}/cancelar</span></div>
+  <div class="card"><h5 style="margin-top:0">Catálogo e estoque <span class="tag g">UC09 · UC12</span></h5>
+    <ul><li>SKU único, código de barras (EAN), unidade, fornecedor, NCM (8 dígitos) e CEST (7)</li>
+    <li>Estoque atual e estoque mínimo; flag de estoque crítico</li><li>Busca por nome ou SKU, filtro de itens críticos, paginação</li>
+    <li>Ajuste de estoque e mudança de preço auditados (valor anterior e novo)</li><li>Exclusão lógica: o histórico é preservado</li></ul>
+    <span class="muted mono">/produtos (CRUD, PUT e PATCH)</span></div>
+  <div class="card"><h5 style="margin-top:0">Clientes <span class="tag g">UC08</span></h5>
+    <ul><li>Pessoa Física (CPF) ou Jurídica (CNPJ), com validação dos dígitos</li><li>Documento único; contato e endereço opcionais</li>
+    <li>"Consumidor Padrão" protegido contra alteração</li><li>Busca por documento ou nome</li></ul>
+    <span class="muted mono">/clientes (CRUD; inativação só pelo gerente)</span></div>
+  <div class="card"><h5 style="margin-top:0">Funcionários e comissões <span class="tag g">UC10 · UC13</span></h5>
+    <ul><li>Cadastro com CPF, perfil, senha e % de comissão (0 a 100)</li><li>Comissão calculada em cada venda e congelada nela</li>
+    <li>Relatório por período: total vendido e comissão acumulada</li><li>Inativar ou mudar o perfil de alguém encerra as sessões dessa pessoa</li></ul>
+    <span class="muted mono">/usuarios (CRUD) · GET /vendas/comissoes</span></div>
+</div>
+<div class="card destaque"><h5 style="margin-top:0">Auditoria <span class="tag g">UC16 · Regra 1.2</span></h5>
+  Toda ação sensível gera um registro com <b>quem</b>, <b>quando</b>, <b>o quê</b> e os <b>valores anterior e novo</b>: login (sucesso e falha),
+  abertura/fechamento de caixa, sangria, suprimento, venda, desconto do gerente, cancelamento, cadastros e alterações de produtos, preços,
+  estoque, clientes, cupons e funcionários. Se a operação falhar, o registro também é desfeito: nunca há LOG de algo que não aconteceu.
+  No banco, gatilhos tornam o LOG "somente inclusão".
+  <div class="muted mono" style="margin-top:1.5mm">GET /auditoria?data_inicio=…&amp;data_fim=…&amp;tipo_acao=…</div></div>
+
+<h3 class="sub pagina" id="s1-4-2" data-toc="2" data-num="1.4.2">Especificação e Descrição de Casos de Uso</h3>
+<p class="lead">Especificação detalhada dos casos de uso centrais da operação — registro de venda, desconto do gerente e
+cancelamento —, com o comportamento, as regras de negócio e os fluxos de interação entre os atores e o sistema.</p>
+<!--incluir:04-detalhamento-casos-de-uso#1 1.4.2-->
+<h4>1.4.2.2 Descrição detalhada dos casos de uso</h4>
+<!--fichas:04-detalhamento-casos-de-uso#UC04,UC07,UC11-->
+<p class="remissao">Os demais casos de uso (UC01 a UC03, UC05, UC06, UC08 a UC10 e UC12 a UC16) estão resumidos no Dicionário de Casos de Uso (1.4.1)
+e especificados por completo no documento <code>04-detalhamento-casos-de-uso.pdf</code>.</p>
+
+<h2 class="secao pagina" id="s1-5" data-toc="1" data-num="1.5">Perfis de Acesso</h2>
+<p>O sistema tem dois atores. O <b>Gerente</b> herda tudo o que o Vendedor faz e tem os privilégios administrativos.
+As permissões são verificadas <b>duas vezes</b>: no filtro de segurança (antes de ler a requisição) e nos controllers.</p>
+<table>
+  <thead><tr><th>Operação</th><th class="c" style="width:17%">Vendedor</th><th class="c" style="width:17%">Gerente</th></tr></thead>
+  <tbody>
+    <tr><td>Entrar no sistema, renovar sessão, trocar a própria senha</td><td class="c ok">✔</td><td class="c ok">✔</td></tr>
+    <tr><td>Abrir e fechar o próprio caixa</td><td class="c ok">✔</td><td class="c ok">✔ (qualquer caixa)</td></tr>
+    <tr><td>Registrar vendas e aplicar cupom</td><td class="c ok">✔</td><td class="c ok">✔</td></tr>
+    <tr><td>Conceder desconto direto em R$</td><td class="c warn">com senha do gerente</td><td class="c ok">✔</td></tr>
+    <tr><td>Cadastrar, consultar e editar clientes</td><td class="c ok">✔</td><td class="c ok">✔</td></tr>
+    <tr><td>Inativar clientes</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Consultar estoque e cupons</td><td class="c ok">✔</td><td class="c ok">✔</td></tr>
+    <tr><td>Cadastrar, alterar e inativar produtos (ajuste de estoque)</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Emitir e alterar cupons</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Ver histórico de vendas e comissões</td><td class="c warn">só as próprias</td><td class="c ok">✔ todas</td></tr>
+    <tr><td>Cancelar venda (estorno ao estoque)</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Sangria e suprimento de caixa</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Gerenciar funcionários e percentual de comissão</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Consultar LOG de auditoria</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+  </tbody>
+</table>
+<div class="info"><b>Primeiro acesso:</b> o primeiro gerente é criado automaticamente na subida da aplicação, a partir das
+variáveis <code>PDV_ADMIN_CPF</code> e <code>PDV_ADMIN_SENHA</code>. Nenhuma senha fica escrita no código. A partir dele, os demais funcionários são cadastrados pela API.</div>
+
+<h2 class="secao" style="margin-top:8mm" id="s1-6" data-toc="1" data-num="1.6">Regras de Negócio e Validações</h2>
+<p>As oito validações da Documentação do Projeto e como cada uma foi implementada:</p>
+<table>
+  <thead><tr><th style="width:9%">ID</th><th style="width:20%">Validação</th><th>Como o sistema garante</th><th style="width:12%">Status</th></tr></thead>
+  <tbody>
+    <tr><td><b>VAL-01</b></td><td>Bloqueio de saldo insuficiente</td><td>Os produtos da venda são bloqueados no banco (<code>SELECT … FOR UPDATE</code>) e conferidos antes de qualquer baixa. Resposta 422: <i>"Estoque atual é 1, mas foi solicitado 3."</i> O banco ainda tem um <code>CHECK (estoque ≥ 0)</code> como última barreira.</td><td class="ok">Completo</td></tr>
+    <tr><td><b>VAL-02</b></td><td>Controle de perfil e acesso</td><td>Regras por rota no filtro de segurança, antes da leitura da requisição, e <code>@PreAuthorize</code> nos controllers. Vendedor só enxerga os próprios caixas, vendas e comissões.</td><td class="ok">Completo</td></tr>
+    <tr><td><b>VAL-03</b></td><td>Estorno no cancelamento</td><td>Cancelamento devolve as quantidades ao estoque, marca a venda como CANCELADA e a retira dos totais. Bloqueio de linha impede estorno em dobro.</td><td class="ok">Completo</td></tr>
+    <tr><td><b>VAL-04</b></td><td>Alerta de estoque crítico</td><td>Estoque ≤ mínimo → flag <code>alerta_estoque_critico</code>, filtro <code>estoque_critico=true</code> e lista de alertas na resposta da venda.</td><td class="warn">Backend pronto</td></tr>
+    <tr><td><b>VAL-05</b></td><td>Controle rigoroso de caixa</td><td>Venda exige caixa ABERTO do próprio operador. Um caixa aberto por operador (índice único no banco). Sangria limitada ao saldo em dinheiro.</td><td class="ok">Completo</td></tr>
+    <tr><td><b>VAL-06</b></td><td>Segurança e criptografia (LGPD)</td><td>BCrypt, JWT assinado, bloqueio após tentativas erradas, logout persistente, dados de teste sintéticos, CPF mascarado nos logs. A API força HTTPS e envia HSTS; o proxy TLS (Caddy) foi validado localmente — falta o certificado no ambiente AWS.</td><td class="warn">Certificado na AWS</td></tr>
+    <tr><td><b>VAL-07</b></td><td>Desempenho (&lt; 3 s)</td><td>Medido com 1.000 produtos e com 20 operadores simultâneos (149 req/s): p95 190 ms, pior requisição 1.565 ms. Falta medir na AWS.</td><td class="ok">Atendido local</td></tr>
+    <tr><td><b>VAL-08</b></td><td>Reserva de estoque</td><td>A reserva no carrinho ficou para a próxima fase. O objetivo da regra (nenhuma venda duplicada do mesmo saldo) é garantido na finalização da venda.</td><td class="warn">Parcial</td></tr>
+  </tbody>
+</table>
+
+<h3>Exemplos reais das Regras de Sistema (seção 3) — todos comprovados por teste</h3>
+<table>
+  <thead><tr><th style="width:14%">Operador</th><th>Situação</th><th>Resultado no sistema</th></tr></thead>
+  <tbody>
+    <tr><td>Vendedor</td><td>Camiseta P: estoque 10, vende 2</td><td class="ok">Venda concluída; estoque 8 no banco</td></tr>
+    <tr><td>Vendedor</td><td>Tênis 41: estoque 1, pede 3</td><td class="bad">Bloqueio por saldo insuficiente; nada é gravado</td></tr>
+    <tr><td>Vendedor</td><td>Meia: estoque 3, mínimo 2, vende 1</td><td class="warn">Venda concluída + alerta de estoque crítico</td></tr>
+    <tr><td>Vendedor</td><td>Tenta cancelar a venda #102</td><td class="bad">"Acesso Negado" (403)</td></tr>
+    <tr><td>Gerente</td><td>Cancela a venda #102</td><td class="ok">Venda cancelada; estoque estornado; LOG gravado</td></tr>
+  </tbody>
+</table>
+
+<h3>Tabela de decisão dos descontos</h3>
+<table>
+  <thead><tr><th>Perfil</th><th>Cupom</th><th>Desconto direto</th><th>Senha do gerente</th><th>Resultado (subtotal R$ 250)</th></tr></thead>
+  <tbody>
+    <tr><td>Vendedor</td><td>—</td><td>—</td><td>—</td><td>R$ 250,00</td></tr>
+    <tr><td>Vendedor</td><td>10%</td><td>—</td><td>—</td><td>R$ 225,00</td></tr>
+    <tr><td>Vendedor</td><td>—</td><td>R$ 10</td><td>ausente ou errada</td><td class="bad">Recusado (403)</td></tr>
+    <tr><td>Vendedor</td><td>10%</td><td>R$ 10</td><td>correta</td><td class="ok">R$ 215,00</td></tr>
+    <tr><td>Gerente</td><td>10%</td><td>R$ 10</td><td>dispensada</td><td class="ok">R$ 215,00</td></tr>
+    <tr><td>Qualquer</td><td>10%</td><td>&gt; restante</td><td>—</td><td class="bad">Recusado (422)</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ 2 PROJETO -->
+<section class="divisor">
+  <div class="grande">2</div>
+  <h1 id="parte2" data-toc="0" data-num="2.">Projeto</h1>
+  <div class="traco"></div>
+  <div class="itens"><!--itens:parte2--></div>
+</section>
+
+<h2 class="secao pagina" id="s2-1" data-toc="1" data-num="2.1">Diagrama Entidade-Relacionamento</h2>
+<p>O esquema é criado e versionado automaticamente pelo <b>Flyway</b> na subida da aplicação: <code>V1</code> cria as
+tabelas e restrições; <code>V2</code> cadastra o "Consumidor Padrão"; <code>V3</code> cria as tabelas de segurança
+(tokens revogados e tentativas de acesso); <code>V4</code> acrescenta gatilhos de imutabilidade, novos CHECKs e índices.</p>
+<figure>
+  <svg viewBox="0 0 700 300" width="100%">
+    <defs><marker id="seta-der" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b6573"/></marker></defs>
+    <g font-size="11">
+      <rect x="10" y="20" width="135" height="44" rx="5" fill="#eaf2fb" stroke="#1f5a96"/><text x="77" y="40" text-anchor="middle" font-weight="700" fill="#12355b">usuarios</text><text x="77" y="55" text-anchor="middle" font-size="9" fill="#5b6573">CPF único · perfil · comissão</text>
+      <rect x="10" y="125" width="135" height="44" rx="5" fill="#eaf2fb" stroke="#1f5a96"/><text x="77" y="145" text-anchor="middle" font-weight="700" fill="#12355b">caixas</text><text x="77" y="160" text-anchor="middle" font-size="9" fill="#5b6573">1 ABERTO por operador</text>
+      <rect x="10" y="235" width="135" height="44" rx="5" fill="#eaf2fb" stroke="#1f5a96"/><text x="77" y="255" text-anchor="middle" font-weight="700" fill="#12355b">movimentacoes_caixa</text><text x="77" y="270" text-anchor="middle" font-size="9" fill="#5b6573">SANGRIA · SUPRIMENTO</text>
+      <rect x="280" y="115" width="140" height="64" rx="5" fill="#e6f4ec" stroke="#1b8a5a"/><text x="350" y="137" text-anchor="middle" font-weight="700" fill="#1b8a5a">vendas</text><text x="350" y="152" text-anchor="middle" font-size="9" fill="#5b6573">total = subtotal − descontos</text><text x="350" y="166" text-anchor="middle" font-size="9" fill="#5b6573">CONCLUIDA · CANCELADA</text>
+      <rect x="280" y="235" width="140" height="44" rx="5" fill="#e6f4ec" stroke="#1b8a5a"/><text x="350" y="255" text-anchor="middle" font-weight="700" fill="#1b8a5a">itens_venda</text><text x="350" y="270" text-anchor="middle" font-size="9" fill="#5b6573">preço congelado</text>
+      <rect x="280" y="20" width="140" height="44" rx="5" fill="#eaf2fb" stroke="#1f5a96"/><text x="350" y="40" text-anchor="middle" font-weight="700" fill="#12355b">clientes</text><text x="350" y="55" text-anchor="middle" font-size="9" fill="#5b6573">PF 11 / PJ 14 dígitos · único</text>
+      <rect x="550" y="20" width="140" height="44" rx="5" fill="#eaf2fb" stroke="#1f5a96"/><text x="620" y="40" text-anchor="middle" font-weight="700" fill="#12355b">cupons_desconto</text><text x="620" y="55" text-anchor="middle" font-size="9" fill="#5b6573">código único · período</text>
+      <rect x="550" y="235" width="140" height="44" rx="5" fill="#eaf2fb" stroke="#1f5a96"/><text x="620" y="255" text-anchor="middle" font-weight="700" fill="#12355b">produtos</text><text x="620" y="270" text-anchor="middle" font-size="9" fill="#5b6573">SKU único · estoque ≥ 0</text>
+      <rect x="550" y="125" width="140" height="44" rx="5" fill="#fdf0e3" stroke="#c2620a"/><text x="620" y="145" text-anchor="middle" font-weight="700" fill="#c2620a">logs_auditoria</text><text x="620" y="160" text-anchor="middle" font-size="9" fill="#5b6573">anterior · novo</text>
+    </g>
+    <g stroke="#5b6573" stroke-width="1.4" fill="none">
+      <path d="M77 66 V123" marker-end="url(#seta-der)"/>
+      <path d="M77 171 V233" marker-end="url(#seta-der)"/>
+      <path d="M147 147 H278" marker-end="url(#seta-der)"/>
+      <path d="M147 42 L278 125" marker-end="url(#seta-der)"/>
+      <path d="M350 66 V113" marker-end="url(#seta-der)"/>
+      <path d="M548 50 L422 125" marker-end="url(#seta-der)"/>
+      <path d="M350 181 V233" marker-end="url(#seta-der)"/>
+      <path d="M548 257 H422" marker-end="url(#seta-der)"/>
+    </g>
+  </svg>
+  <figcaption>Figura 1 — Tabelas de negócio e relacionamentos principais. A seta sai da tabela referenciada e chega na tabela que guarda a chave estrangeira.
+  As tabelas de segurança <code>tokens_revogados</code> e <code>tentativas_acesso</code> não têm chaves estrangeiras e aparecem no modelo lógico (2.1.1).</figcaption>
+</figure>
+<h4>Relacionamentos</h4>
+<!--incluir:05-diagrama-entidade-relacionamento#3 sem-titulo-->
+
+<h3 class="sub pagina" id="s2-1-1" data-toc="2" data-num="2.1.1">Modelo Lógico do Banco de Dados</h3>
+<p>Modelo físico do banco PostgreSQL 17 implantado pelas migrações Flyway V1 a V4: 11 tabelas, 102 colunas e 12 chaves
+estrangeiras, com os tipos de cada coluna.</p>
+<!--figura:05-diagrama-entidade-relacionamento-->
+<h4>Regras garantidas pelo próprio banco</h4>
+<!--incluir:05-diagrama-entidade-relacionamento#4 sem-titulo-->
+
+<h2 class="secao pagina" id="s2-2" data-toc="1" data-num="2.2">Dicionário de Dados</h2>
+<p>Dicionário de dados do banco do sistema, elaborado a partir do modelo lógico (seção 2.1.1). Legenda — <b>PK</b>: chave primária;
+<b>FK</b>: chave estrangeira; <b>UK</b>: valor único; <b>Obrig.</b>: campo NOT NULL. Valores em R$ usam <code>NUMERIC(10,2)</code>, datas
+<code>TIMESTAMPTZ</code>, e registros cadastrais são inativados (<code>ativo = false</code>), nunca apagados. Os papéis de acesso ao banco em produção estão no documento <code>06-dicionario-de-dados.pdf</code>.</p>
+<!--dicionario:06-dicionario-de-dados-->
+<h4>Valores de <code>logs_auditoria.tipo_acao</code></h4>
+<!--incluir:06-dicionario-de-dados#3 sem-titulo-->
+<h4>Índices</h4>
+<!--incluir:06-dicionario-de-dados#4 sem-titulo-->
+
+<h2 class="secao pagina" id="s2-3" data-toc="1" data-num="2.3">Tecnologias</h2>
+<p>Tecnologias utilizadas no PDV Web:</p>
+<div class="tec"><b>Java 25</b><span>Linguagem (OpenJDK, versão LTS)</span></div>
+<div class="tec"><b>Spring Boot 4.1</b><span>Back-end: Web MVC, Data JPA (Hibernate), Validation e Actuator</span></div>
+<div class="tec"><b>Spring Security + JWT</b><span>Segurança: tokens HS256 de 24 h, perfis e senhas BCrypt</span></div>
+<div class="tec"><b>PostgreSQL 17 + Flyway</b><span>Banco de dados e versionamento do esquema (migrações V1 a V4)</span></div>
+<div class="tec"><b>JUnit 6 · Mockito · Cucumber · JaCoCo · PIT</b><span>Testes unitários, de integração, BDD, cobertura e mutação</span></div>
+<div class="tec"><b>Docker · Docker Compose · Caddy</b><span>Infraestrutura: containers, backup diário e proxy HTTPS</span></div>
+<div class="tec"><b>AWS EC2</b><span>Hospedagem em nuvem (implantação pendente)</span></div>
+<div class="tec"><b>Maven Wrapper · GitHub Actions</b><span>Build e integração contínua</span></div>
+<div class="tec"><b>Front-end web</b><span>Telas do Vendedor e do Gerente — a definir (Ciclo 2)</span></div>
+<p class="remissao">As versões exatas de cada biblioteca e o motivo de cada escolha estão no documento <code>07-tecnologias.pdf</code>.</p>
+<figure class="figura-compacta">
+  <svg viewBox="0 0 700 330" width="100%">
+    <defs><marker id="seta-arq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1f5a96"/></marker></defs>
+    <rect x="10" y="125" width="120" height="80" rx="8" fill="#eaf2fb" stroke="#1f5a96"/>
+    <text x="70" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="#12355b">Cliente</text>
+    <text x="70" y="178" text-anchor="middle" font-size="10" fill="#5b6573">Front-end / Postman</text>
+    <text x="70" y="192" text-anchor="middle" font-size="10" fill="#5b6573">HTTPS + JSON</text>
+    <path d="M132 165 H170" stroke="#1f5a96" stroke-width="2" marker-end="url(#seta-arq)"/>
+    <rect x="172" y="10" width="380" height="310" rx="10" fill="#f8fafc" stroke="#12355b" stroke-width="1.5"/>
+    <text x="362" y="32" text-anchor="middle" font-size="13" font-weight="700" fill="#12355b">PDV Web API — Spring Boot 4.1 (container Docker)</text>
+    <rect x="190" y="45" width="345" height="48" rx="6" fill="#fdecea" stroke="#b42318"/>
+    <text x="362" y="65" text-anchor="middle" font-size="11.5" font-weight="700" fill="#b42318">Filtro de segurança</text>
+    <text x="362" y="82" text-anchor="middle" font-size="9.5" fill="#5b6573">valida JWT · usuário ativo e perfil vigente · regras por perfil (403)</text>
+    <rect x="190" y="103" width="345" height="48" rx="6" fill="#eaf2fb" stroke="#1f5a96"/>
+    <text x="362" y="123" text-anchor="middle" font-size="11.5" font-weight="700" fill="#12355b">Controllers REST</text>
+    <text x="362" y="140" text-anchor="middle" font-size="9.5" fill="#5b6573">validação de entrada · contrato v2.3 · erros RFC 7807</text>
+    <rect x="190" y="161" width="345" height="58" rx="6" fill="#e6f4ec" stroke="#1b8a5a"/>
+    <text x="362" y="181" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1b8a5a">Serviços (regras de negócio)</text>
+    <text x="362" y="197" text-anchor="middle" font-size="9.5" fill="#5b6573">venda · caixa · cupom · comissão · estorno</text>
+    <text x="362" y="211" text-anchor="middle" font-size="9.5" fill="#5b6573">transação única · bloqueio de linha · auditoria</text>
+    <rect x="190" y="229" width="345" height="40" rx="6" fill="#eef2f6" stroke="#5b6573"/>
+    <text x="362" y="248" text-anchor="middle" font-size="11.5" font-weight="700" fill="#33404f">Repositórios (Spring Data JPA)</text>
+    <text x="362" y="262" text-anchor="middle" font-size="9.5" fill="#5b6573">consultas, filtros paginados e SELECT … FOR UPDATE</text>
+    <text x="362" y="300" text-anchor="middle" font-size="9.5" fill="#5b6573">Flyway aplica as migrações V1 a V4 ao subir</text>
+    <path d="M554 250 H590" stroke="#1f5a96" stroke-width="2" marker-end="url(#seta-arq)"/>
+    <ellipse cx="640" cy="200" rx="48" ry="14" fill="#eaf2fb" stroke="#1f5a96"/>
+    <path d="M592 200 V290 A48 14 0 0 0 688 290 V200" fill="#eaf2fb" stroke="#1f5a96"/>
+    <text x="640" y="245" text-anchor="middle" font-size="12" font-weight="700" fill="#12355b">PostgreSQL</text>
+    <text x="640" y="262" text-anchor="middle" font-size="10" fill="#5b6573">17</text>
+    <text x="640" y="125" text-anchor="middle" font-size="10" fill="#5b6573">AWS EC2</text>
+    <text x="640" y="140" text-anchor="middle" font-size="10" fill="#5b6573">Docker Compose</text>
+  </svg>
+  <figcaption>Figura 2 — Camadas da aplicação. Cada requisição passa pela segurança antes de qualquer regra de negócio.</figcaption>
+</figure>
+<h4>Organização do código</h4>
+<div class="grid2" style="break-inside:avoid">
+  <table><thead><tr><th>Pacote</th><th>Responsabilidade</th></tr></thead><tbody>
+    <tr><td><code>auth</code></td><td>login, refresh, logout, troca de senha</td></tr>
+    <tr><td><code>usuario</code></td><td>funcionários, perfis, comissões</td></tr>
+    <tr><td><code>produto</code></td><td>catálogo e estoque</td></tr>
+    <tr><td><code>cliente</code></td><td>clientes PF/PJ</td></tr>
+    <tr><td><code>cupom</code></td><td>cupons de desconto</td></tr>
+  </tbody></table>
+  <table><thead><tr><th>Pacote</th><th>Responsabilidade</th></tr></thead><tbody>
+    <tr><td><code>caixa</code></td><td>turnos, sangria, suprimento</td></tr>
+    <tr><td><code>venda</code></td><td>vendas, descontos, comissão, estorno</td></tr>
+    <tr><td><code>auditoria</code></td><td>LOG das ações sensíveis</td></tr>
+    <tr><td><code>seguranca</code></td><td>JWT, perfis, revogação</td></tr>
+    <tr><td><code>comum</code></td><td>erros, paginação, CPF/CNPJ, dinheiro</td></tr>
+  </tbody></table>
+</div>
+
+<h2 class="secao pagina" id="s2-4" data-toc="1" data-num="2.4">Contrato da API</h2>
+<p>A interface segue a <b>Documentação da API v2.3</b>: JSON em <code>snake_case</code>, listagens paginadas e erros no padrão RFC 7807.
+A documentação interativa (Swagger UI) fica em <code>/swagger-ui.html</code> no modo demonstração.</p>
+<div class="grid2">
+  <div>
+    <h4 style="margin-top:0">Padrão das listagens (paginação)</h4>
+<pre><span class="k">GET</span> /produtos?pagina=1&amp;limite=20&amp;estoque_critico=true
+{
+  <span class="s">"pagina"</span>: 1, <span class="s">"limite"</span>: 20,
+  <span class="s">"total_registros"</span>: 1, <span class="s">"total_paginas"</span>: 1,
+  <span class="s">"dados"</span>: [{ <span class="s">"id"</span>: 104, <span class="s">"sku"</span>: "PROD-ELE-001",
+     <span class="s">"estoque_atual"</span>: 2, <span class="s">"estoque_minimo"</span>: 3,
+     <span class="s">"alerta_estoque_critico"</span>: true }]
+}</pre>
+  </div>
+  <div>
+    <h4 style="margin-top:0">Padrão de erros (RFC 7807)</h4>
+<pre><span class="c">// 422 Unprocessable Entity</span>
+{
+  <span class="s">"type"</span>: ".../erros/estoque-insuficiente",
+  <span class="s">"title"</span>: "Estoque Insuficiente",
+  <span class="s">"status"</span>: 422,
+  <span class="s">"detail"</span>: "Quantidade solicitada supera
+             o estoque disponível.",
+  <span class="s">"invalid_params"</span>: [{
+    <span class="s">"name"</span>: "produto_id: 104",
+    <span class="s">"reason"</span>: "Estoque atual é 2, mas foi
+               solicitado 5."
+  }]
+}</pre>
+  </div>
+</div>
+<h3>Rotas por recurso</h3>
+<table>
+  <thead><tr><th style="width:15%">Recurso</th><th>Rotas</th><th style="width:22%">Perfil</th></tr></thead>
+  <tbody>
+    <tr><td>Autenticação</td><td><code>POST /auth/login</code> · <code>POST /auth/refresh-token</code> · <code>POST /auth/logout</code> · <code>PATCH /auth/alterar-senha</code></td><td>público / autenticado</td></tr>
+    <tr><td>Produtos</td><td><code>GET /produtos</code> · <code>GET /produtos/{id}</code> · <code>POST</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE</code></td><td>leitura: todos · escrita: Gerente</td></tr>
+    <tr><td>Clientes</td><td><code>GET</code> · <code>POST</code> · <code>PUT</code> · <code>PATCH /clientes[/{id}]</code> · <code>DELETE /clientes/{id}</code></td><td>todos · exclusão: Gerente</td></tr>
+    <tr><td>Cupons</td><td><code>GET /cupons[/{id}]</code> · <code>POST</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE</code></td><td>leitura: todos · escrita: Gerente</td></tr>
+    <tr><td>Vendas</td><td><code>POST /vendas</code> · <code>GET /vendas[/{id}]</code> · <code>GET /vendas/comissoes</code> · <code>POST /vendas/{id}/cancelar</code></td><td>todos · cancelar: Gerente</td></tr>
+    <tr><td>Caixa</td><td><code>POST /caixas/abertura</code> · <code>GET /caixas/atual</code> · <code>GET /caixas/{id}</code> · <code>POST /caixas/{id}/fechamento</code> · <code>/sangria</code> · <code>/suprimento</code></td><td>todos · sangria/suprimento: Gerente</td></tr>
+    <tr><td>Usuários</td><td><code>GET</code> · <code>POST</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE /usuarios[/{id}]</code></td><td>Gerente</td></tr>
+    <tr><td>Auditoria</td><td><code>GET /auditoria</code></td><td>Gerente</td></tr>
+    <tr><td>Saúde</td><td><code>GET /actuator/health</code></td><td>público</td></tr>
+  </tbody>
+</table>
+<h3>Códigos de resposta</h3>
+<table>
+  <thead><tr><th style="width:12%">Código</th><th>Quando acontece</th></tr></thead>
+  <tbody>
+    <tr><td>200 / 201</td><td>Operação concluída / recurso criado</td></tr>
+    <tr><td>400</td><td>Dados inválidos, JSON malformado ou parâmetro fora do limite</td></tr>
+    <tr><td>401</td><td>Sem token, token inválido, expirado, revogado, ou usuário inativo/com perfil alterado</td></tr>
+    <tr><td>403</td><td>Perfil sem permissão, recurso de outro operador, desconto sem autorização</td></tr>
+    <tr><td>404 / 405</td><td>Recurso inexistente / método não permitido (ex.: editar uma venda)</td></tr>
+    <tr><td>409</td><td>Duplicidade (SKU, CPF/CNPJ, cupom) ou caixa já aberto</td></tr>
+    <tr><td>422</td><td>Regra de negócio: estoque insuficiente, caixa fechado, cupom inválido, desconto maior que o total, venda já cancelada</td></tr>
+    <tr><td>429</td><td>Tentativas de senha esgotadas (login ou senha do gerente): bloqueio de 15 min com <code>Retry-After</code></td></tr>
+    <tr><td>503</td><td>Banco de dados indisponível (sem expor detalhes)</td></tr>
+  </tbody>
+</table>
+
+<h2 class="secao" style="margin-top:8mm" id="s2-5" data-toc="1" data-num="2.5">Segurança</h2>
+<div class="grid2">
+  <div class="card"><h4 style="margin-top:0">Autenticação</h4><ul>
+    <li>Senhas guardadas só como hash <b>BCrypt</b></li>
+    <li>Login com erro devolve sempre a mesma mensagem e leva o mesmo tempo: não revela se o CPF existe</li>
+    <li>Token JWT assinado (HS256); a aplicação <b>não sobe</b> sem uma chave secreta forte</li>
+    <li>Logout e renovação invalidam o token anterior</li></ul></div>
+  <div class="card"><h4 style="margin-top:0">Autorização</h4><ul>
+    <li>Perfis verificados em duas camadas</li>
+    <li>Usuário inativado ou com perfil alterado perde o acesso <b>na hora</b>, sem esperar o token expirar</li>
+    <li>Proteção contra acesso a dados de outro usuário trocando o ID na URL</li>
+    <li>Desconto direto exige perfil de gerente ou a senha de um gerente ativo</li></ul></div>
+  <div class="card"><h4 style="margin-top:0">Integridade financeira</h4><ul>
+    <li>Preço vem sempre do catálogo; preço adulterado na requisição é ignorado</li>
+    <li>Venda inteira numa única transação; qualquer falha desfaz tudo</li>
+    <li>Restrições no banco: estoque ≥ 0, total = subtotal − descontos, documento único</li>
+    <li>Vendas imutáveis; cancelamento só com motivo e auditoria; gatilhos impedem adulteração por SQL direto</li>
+    <li>API conecta com um papel sem permissão de alterar tabelas (<code>pdv_app</code>)</li></ul></div>
+  <div class="card"><h4 style="margin-top:0">Privacidade e erros</h4><ul>
+    <li>Erros nunca expõem SQL, stack trace ou dados de conexão</li>
+    <li>Banco indisponível → 503 genérico</li>
+    <li>CPF mascarado nos registros de tentativas de login (LGPD)</li>
+    <li>5 senhas erradas bloqueiam o login por 15 min (429); o mesmo vale para a senha do gerente no desconto</li>
+    <li>Logout gravado no banco: vale após reinício e entre servidores</li>
+    <li>HTTPS obrigatório e HSTS ativáveis por configuração</li>
+    <li>Só o health check é público; demais endpoints de monitoramento ficam fechados</li></ul></div>
+</div>
+<p class="remissao">As falhas de segurança encontradas pelos testes (DEF-WEB-001 a 005) e suas correções estão na seção 3.3.</p>
+
+<!-- ============================================================ 3 QUALIDADE E TESTES -->
+<section class="divisor">
+  <div class="grande">3</div>
+  <h1 id="parte3" data-toc="0" data-num="3.">Qualidade e Testes</h1>
+  <div class="traco"></div>
+  <div class="itens"><!--itens:parte3--></div>
+</section>
+
+<h2 class="secao pagina" id="s3-1" data-toc="1" data-num="3.1">Processo e Plano de Testes</h2>
+<p>Os testes seguiram as <b>7 etapas do Tutorial de Cenários de Testes</b> e o padrão IEEE 829 / ISO/IEC/IEEE 29119-3 de documentação.</p>
+<div class="fluxo">
+  <div class="passo"><b>1</b>Entender os requisitos</div><div class="seta">→</div>
+  <div class="passo"><b>2</b>Identificar condições</div><div class="seta">→</div>
+  <div class="passo"><b>3</b>Definir cenários</div><div class="seta">→</div>
+  <div class="passo"><b>4</b>Preparar os casos</div><div class="seta">→</div>
+  <div class="passo"><b>5</b>Priorizar</div><div class="seta">→</div>
+  <div class="passo"><b>6</b>Executar e registrar</div><div class="seta">→</div>
+  <div class="passo"><b>7</b>Corrigir e retestar</div>
+</div>
+<div class="grid2">
+  <div>
+    <h4 style="margin-top:0">Níveis de teste (pirâmide)</h4>
+    <figure style="margin:0 0 2mm">
+      <svg viewBox="0 0 320 190" width="100%">
+        <polygon points="160,8 205,58 115,58" fill="#c2620a"/><text x="160" y="47" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">BDD</text>
+        <polygon points="113,62 207,62 245,104 75,104" fill="#1b8a5a"/><text x="160" y="88" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">Integração · 144</text>
+        <polygon points="73,108 247,108 268,132 52,132" fill="#1f5a96"/><text x="160" y="124" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">Contrato HTTP · 12</text>
+        <polygon points="50,136 270,136 310,182 10,182" fill="#12355b"/><text x="160" y="164" text-anchor="middle" font-size="10.5" fill="#fff" font-weight="700">Unitários · 83</text>
+        <text x="215" y="32" font-size="9" fill="#5b6573">16 cenários</text>
+      </svg>
+      <figcaption>Casos distintos por nível (Ciclo 1.2)</figcaption>
+    </figure>
+  </div>
+  <div>
+    <h4 style="margin-top:0">Técnicas aplicadas</h4>
+    <ul>
+      <li><b>Partição de equivalência:</b> CPF/CNPJ, tipos de pessoa, formas de pagamento, perfis</li>
+      <li><b>Valores-limite:</b> preço 0,00 × 0,01; estoque = mínimo; desconto = total; sangria = saldo; vigência do cupom ao segundo</li>
+      <li><b>Tabela de decisão:</b> cupom × desconto direto × perfil × autorização</li>
+      <li><b>Transição de estados:</b> caixa ABERTO → FECHADO; venda CONCLUIDA → CANCELADA</li>
+      <li><b>Segurança:</b> token adulterado, outra chave, perfil sem permissão, troca de ID na URL, SQL injection, força bruta</li>
+      <li><b>Exceção:</b> banco indisponível, JSON malformado, erro inesperado</li>
+      <li><b>Concorrência:</b> 20 vendas simultâneas do último lote</li>
+      <li><b>Desempenho e carga:</b> 1.000 produtos; 20 operadores simultâneos</li>
+      <li><b>Mutação (PIT):</b> mede se os testes detectam erros inseridos no código</li>
+    </ul>
+  </div>
+</div>
+<h3>Critérios de saída do ciclo</h3>
+<table>
+  <thead><tr><th style="width:8%">#</th><th>Critério</th><th style="width:20%">Meta</th><th style="width:24%">Resultado</th><th style="width:9%">Situação</th></tr></thead>
+  <tbody>
+    <tr><td>CS-1</td><td>Casos P1 executados e aprovados</td><td>100%</td><td>100%</td><td class="ok">✔</td></tr>
+    <tr><td>CS-2</td><td>Taxa de aprovação</td><td>≥ 95%</td><td>100% (320/320)</td><td class="ok">✔</td></tr>
+    <tr><td>CS-3</td><td>Defeitos Críticos/Altos abertos (backend)</td><td>0</td><td>0</td><td class="ok">✔</td></tr>
+    <tr><td>CS-4</td><td>Requisitos do escopo com ≥ 1 caso aprovado</td><td>100%</td><td>100% (38/38)</td><td class="ok">✔</td></tr>
+    <tr><td>CS-5</td><td>Cobertura de código</td><td>≥ 80% linhas, ≥ 70% ramos</td><td>96,6% / 87,6%</td><td class="ok">✔</td></tr>
+    <tr><td>CS-6</td><td>Tempo de resposta</td><td>p95 &lt; 3.000 ms</td><td>p95 190 ms (local)</td><td class="ok">✔</td></tr>
+    <tr><td>CS-7</td><td>Força dos testes unitários (mutação)</td><td>≥ 80%</td><td>100%</td><td class="ok">✔</td></tr>
+  </tbody>
+</table>
+
+<h2 class="secao" style="margin-top:8mm" id="s3-2" data-toc="1" data-num="3.2">Resultados da Execução</h2>
+<p>Execução oficial do Ciclo 1.2: 28/10/2026, <code>./mvnw clean verify</code>, 3 min 34 s, Windows 10 Pro, OpenJDK 25, Spring Boot 4.1.2 e PostgreSQL 17 embarcado.</p>
+<div class="grid4">
+  <div class="kpi verde"><div class="v">320</div><div class="r">execuções · 0 falhas</div></div>
+  <div class="kpi"><div class="v">255</div><div class="r">casos distintos (239 CT + 16 BDD)</div></div>
+  <div class="kpi verde"><div class="v">87,6%</div><div class="r">dos ramos de decisão cobertos</div></div>
+  <div class="kpi"><div class="v">38/39</div><div class="r">requisitos com teste aprovado</div></div>
+</div>
+<h3>Evolução por ciclo</h3>
+<table>
+  <thead><tr><th>Indicador</th><th>Ciclo 1 (26/10)</th><th>Ciclo 1.1 — robustez (28/10)</th><th>Ciclo 1.2 — banco (28/10)</th></tr></thead>
+  <tbody>
+    <tr><td>Casos distintos</td><td>211</td><td>248</td><td><b>255</b></td></tr>
+    <tr><td>Execuções aprovadas</td><td>265/265</td><td>313/313</td><td><b>320/320</b></td></tr>
+    <tr><td>Cobertura (linhas / ramos)</td><td>94,1% / 81,2%</td><td>96,8% / 87,6%</td><td><b>96,6% / 87,6%</b></td></tr>
+    <tr><td>Força de mutação</td><td>100% (11 classes)</td><td>100% (12 classes, 216 mutantes)</td><td>100%</td></tr>
+    <tr><td>Carga (20 simultâneos)</td><td>—</td><td>p95 281 ms · máx. 981 ms · 148 req/s</td><td><b>p95 190 ms · máx. 1.565 ms · 149 req/s</b></td></tr>
+  </tbody>
+</table>
+<div class="grid2">
+  <div class="sucesso"><b>Concorrência:</b> 20 vendedores tentando vender ao mesmo tempo o último lote de 5 unidades →
+    <b>exatamente 5 vendas</b>, 15 recusas e estoque final 0, repetido 10 vezes por execução. Dois cancelamentos simultâneos → estoque estornado uma única vez.</div>
+  <div class="sucesso"><b>Teste de mutação:</b> na primeira rodada, 14 erros inseridos no código passaram despercebidos
+    (ex.: <i>apagar a baixa de estoque da venda</i>). Os testes foram reforçados até detectar <b>100%</b> deles.</div>
+</div>
+<h3>Desempenho (limite VAL-07: 3.000 ms)</h3>
+<table>
+  <thead><tr><th>Operação</th><th class="d">Média</th><th class="d">p95</th><th class="d">Máximo</th></tr></thead>
+  <tbody>
+    <tr><td>Listar 1.000 produtos (página de 100)</td><td class="d">41,0 ms</td><td class="d">74 ms</td><td class="d">77 ms</td></tr>
+    <tr><td>Buscar produto por nome</td><td class="d">25,1 ms</td><td class="d">36 ms</td><td class="d">46 ms</td></tr>
+    <tr><td>Finalizar venda com 10 itens</td><td class="d">45,5 ms</td><td class="d">59 ms</td><td class="d">62 ms</td></tr>
+    <tr><td>Consultar um produto</td><td class="d">7,2 ms</td><td class="d">9 ms</td><td class="d">9 ms</td></tr>
+    <tr><td><b>Carga: 20 operadores simultâneos</b> (400 requisições, 0 erros) — Ciclo 1.1</td><td class="d">100,9 ms</td><td class="d">281 ms</td><td class="d">981 ms</td></tr>
+    <tr><td><b>Carga: 20 operadores simultâneos</b> (149 req/s, 0 erros) — Ciclo 1.2</td><td class="d">—</td><td class="d">190 ms</td><td class="d">1.565 ms</td></tr>
+  </tbody>
+</table>
+<h3>Execução fora dos testes automatizados</h3>
+<ul>
+  <li><b>Servidor real:</b> a API subiu como servidor HTTP (modo demonstração) e passou num roteiro de 14 passos com <code>curl</code>:
+    health check, Swagger, login dos dois perfis, venda do exemplo do contrato (R$ 215,00, comissão R$ 10,75), bloqueio por estoque (422),
+    sangria negada ao vendedor (403), fechamento sem diferença, bloqueio de login (429), logout e cabeçalhos de segurança.</li>
+  <li><b>Docker (roteiro RT-DEP):</b> banco e API saudáveis com as migrações V1–V4; login antes e depois de reiniciar a API; logout persistente;
+    proxy Caddy com HTTP → HTTPS, HSTS e TLS 1.3 (local); backup manual e automático verificados; restauração comprovada.</li>
+</ul>
+
+<h2 class="secao" style="margin-top:8mm" id="s3-3" data-toc="1" data-num="3.3">Defeitos</h2>
+<table>
+  <thead><tr><th>Origem</th><th class="c">Encontrados</th><th class="c">Corrigidos e retestados</th><th class="c">Reteste pendente</th><th class="c">Abertos (aceitos)</th></tr></thead>
+  <tbody>
+    <tr><td>Backend <code>pdv-web-api</code> — produto</td><td class="c">9</td><td class="c">9</td><td class="c">0</td><td class="c">0</td></tr>
+    <tr><td>Backend — script de teste</td><td class="c">1</td><td class="c">1</td><td class="c">0</td><td class="c">0</td></tr>
+    <tr><td>Desktop <code>SistemaVendasEmpresa</code></td><td class="c">9</td><td class="c">0</td><td class="c">7</td><td class="c">2</td></tr>
+    <tr><td><b>Total de defeitos de software</b></td><td class="c"><b>19</b></td><td class="c"><b>10</b></td><td class="c"><b>7</b></td><td class="c"><b>2</b></td></tr>
+  </tbody>
+</table>
+<p>Por severidade: Crítica 1 · Alta 3 · Média 10 · Baixa 5. <b>Defeitos Críticos ou Altos abertos no backend: 0.</b>
+As 5 inconsistências da documentação (DOC-01 a DOC-05) foram resolvidas no ADR-001.</p>
+<h3>Defeitos do backend</h3>
+<table>
+  <thead><tr><th style="width:13%">ID</th><th>O que acontecia</th><th style="width:33%">Correção</th><th style="width:6%">Ciclo</th></tr></thead>
+  <tbody>
+    <tr><td>DEF-WEB-001 <span class="tag l">Média</span></td><td>Vendedor que chamava rota de gerente com dados inválidos recebia 400 em vez de 403, descobrindo as regras de validação</td><td>Permissões checadas no filtro de segurança, antes de ler a requisição</td><td>1</td></tr>
+    <tr><td>DEF-WEB-002 <span class="tag r">Alta</span></td><td>Gerente rebaixado a vendedor mantinha os poderes por até 24 h (perfil gravado no token)</td><td>Token só vale se o perfil nele for igual ao perfil atual no banco</td><td>1</td></tr>
+    <tr><td>DEF-TST-001</td><td>Erro no próprio teste BDD: "10.00" lido como 1000 por causa do idioma português</td><td>Conversão de números do teste corrigida</td><td>1</td></tr>
+    <tr><td>DEF-WEB-003 <span class="tag l">Média</span></td><td>Logout era esquecido quando a API reiniciava: o token voltava a valer</td><td>Tokens revogados gravados no banco</td><td>1.1</td></tr>
+    <tr><td>DEF-WEB-004 <span class="tag l">Média</span></td><td>Login aceitava tentativas ilimitadas de senha (força bruta)</td><td>Bloqueio temporário por CPF e por IP, guardado no banco</td><td>1.1</td></tr>
+    <tr><td>DEF-WEB-005 <span class="tag r">Alta</span></td><td>Vendedor podia testar senhas de gerente sem limite pelo desconto da venda</td><td>5 erros bloqueiam por 15 min (429); cada erro é auditado</td><td>1.1</td></tr>
+    <tr><td>DEF-WEB-006</td><td>Primeira rajada após a subida passava de 3 s</td><td>Aquecimento do pool e das consultas antes de aceitar tráfego</td><td>1.1</td></tr>
+    <tr><td>DEF-WEB-007</td><td>Restauração de backup falhava no Git Bash e deixava a API parada</td><td>Script de restauração corrigido</td><td>1.2</td></tr>
+    <tr><td>DEF-WEB-008</td><td><code>subir-docker.sh</code> pedia senha e terminava com erro com o ambiente saudável</td><td>Script corrigido</td><td>1.2</td></tr>
+    <tr><td>DEF-WEB-009</td><td>Com HTTPS obrigatório, o health check marcaria a API como "unhealthy"</td><td>Health check ajustado ao modo HTTPS</td><td>1.2</td></tr>
+  </tbody>
+</table>
+<p class="muted">Todos corrigidos e retestados. Os defeitos do sistema desktop estão na Apresentação do Projeto (Do sistema desktop ao PDV Web).
+As lacunas de teste encontradas pelo teste de mutação (MUT-01 a MUT-13) foram todas fechadas.</p>
+
+<h2 class="secao" style="margin-top:8mm" id="s3-4" data-toc="1" data-num="3.4">Cenários BDD e Rastreabilidade</h2>
+<p>Os cenários de aceitação estão em <b>linguagem de negócio (Gherkin em português)</b> para que gerentes e vendedores possam
+validá-los sem ler código. Cada linha é executada pelo Cucumber contra a API completa e o PostgreSQL:
+16 cenários distintos, 18 execuções e 130 passos aprovados.</p>
+<table>
+  <thead><tr><th>Arquivo</th><th>Requisitos</th><th>Cenários</th></tr></thead>
+  <tbody>
+    <tr><td><code>venda_estoque.feature</code></td><td>VAL-01, VAL-04, UC04, UC05</td><td>BDD-EST-01 (3 exemplos), BDD-EST-02</td></tr>
+    <tr><td><code>cancelamento_venda.feature</code></td><td>VAL-02, VAL-03, UC11</td><td>BDD-CAN-01 a 03</td></tr>
+    <tr><td><code>descontos.feature</code></td><td>UC06, UC07</td><td>BDD-DES R1 a R8 (tabela de decisão)</td></tr>
+    <tr><td><code>controle_caixa.feature</code></td><td>VAL-05, UC02, UC03, UC15</td><td>BDD-CX-01 a 03</td></tr>
+  </tbody>
+</table>
+<pre><span class="k">Esquema do Cenário:</span> BDD-EST-01 Venda conforme o saldo em estoque - &lt;produto&gt;
+  <span class="k">Dado</span> que o produto "&lt;codigo&gt;" "&lt;produto&gt;" tem &lt;estoque&gt; unidades em estoque e mínimo de &lt;minimo&gt;
+  <span class="k">Quando</span> o vendedor registra a venda de &lt;quantidade&gt; unidades do produto "&lt;codigo&gt;"
+  <span class="k">Então</span> a API deve responder com o status &lt;status&gt;
+  <span class="k">E</span> o estoque do produto "&lt;codigo&gt;" deve ser de &lt;estoque_final&gt; unidades
+  <span class="k">E</span> o alerta de estoque crítico do produto "&lt;codigo&gt;" deve estar "&lt;alerta&gt;"
+  <span class="c">| PROD-01 | Camiseta P | 10 | 2 | 2 | 201 | 8 | desligado |</span>
+  <span class="c">| PROD-02 | Tênis 41   |  1 | 0 | 3 | 422 | 1 | desligado |</span>
+  <span class="c">| PROD-03 | Meia       |  3 | 2 | 1 | 201 | 2 | ligado    |</span></pre>
+<h3>Resumo da matriz de rastreabilidade</h3>
+<table>
+  <thead><tr><th>Grupo</th><th class="c">Requisitos</th><th class="c">Coberto</th><th class="c">Parcial</th><th class="c">Não coberto</th></tr></thead>
+  <tbody>
+    <tr><td>Casos de uso</td><td class="c">16</td><td class="c">16</td><td class="c">0</td><td class="c">0</td></tr>
+    <tr><td>Validações VAL</td><td class="c">8</td><td class="c">4</td><td class="c">4</td><td class="c">0</td></tr>
+    <tr><td>Regras de sistema</td><td class="c">5</td><td class="c">4</td><td class="c">1</td><td class="c">0</td></tr>
+    <tr><td>Contrato da API</td><td class="c">7</td><td class="c">7</td><td class="c">0</td><td class="c">0</td></tr>
+    <tr><td>Não funcionais</td><td class="c">3</td><td class="c">2</td><td class="c">0</td><td class="c">1</td></tr>
+    <tr><td><b>Total</b></td><td class="c"><b>39</b></td><td class="c"><b>33 (84,6%)</b></td><td class="c"><b>5 (12,8%)</b></td><td class="c"><b>1 (2,6%)</b></td></tr>
+  </tbody>
+</table>
+<p>Requisitos com pelo menos um caso executado e aprovado: <b>38 de 39 (97,4%)</b>. O único sem teste automatizado é o RNF-01
+(Docker/AWS), validado no Docker pelo roteiro manual RT-DEP; a implantação na AWS segue pendente.</p>
+
+</body>
+</html>

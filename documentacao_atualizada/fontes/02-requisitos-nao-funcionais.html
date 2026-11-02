@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Requisitos Não Funcionais — PDV Web</title><link rel="stylesheet" href="estilo.css"></head>
+<body>
+<div class="doc-cabecalho">
+  <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
+  <div class="titulo">Requisitos Não Funcionais</div>
+  <div class="resumo">Como o sistema deve se comportar: segurança, desempenho, consistência, auditoria, interoperabilidade, implantação e qualidade — com meta mensurável, forma de verificação e situação atual.</div>
+</div>
+<table class="meta">
+  <tr><td>Documento</td><td>DOC-02 · Requisitos Não Funcionais</td><td>Versão</td><td>2.0 — 28/10/2026</td></tr>
+  <tr><td>Equipe</td><td colspan="3">Hugo de Oliveira Guimarães, Jean Wictor, Cesar Franco</td></tr>
+  <tr><td>Situação anterior</td><td colspan="3">Os requisitos não funcionais estavam espalhados: validações VAL-06 e VAL-07, seção 1.9 do Plano (riscos) e a menção "Arquitetura Docker/AWS, atualização em tempo real e segurança criptográfica". Este documento os consolida.</td></tr>
+  <tr><td>Classificação</td><td colspan="3">Baseada nas características de qualidade da ISO/IEC 25010</td></tr>
+</table>
+
+<h1>1. Resumo</h1>
+<table>
+  <thead><tr><th style="width:9%">ID</th><th style="width:27%">Requisito</th><th style="width:17%">Característica (ISO 25010)</th><th>Meta</th><th style="width:14%">Situação</th></tr></thead>
+  <tbody>
+    <tr><td>RNF-01</td><td>Autenticação segura</td><td>Segurança</td><td>Senhas só em hash BCrypt; token assinado, válido por 24 h; bloqueio após tentativas erradas</td><td class="ok">Atendido</td></tr>
+    <tr><td>RNF-02</td><td>Autorização por perfil</td><td>Segurança</td><td>100% das operações administrativas negadas ao Vendedor</td><td class="ok">Atendido</td></tr>
+    <tr><td>RNF-03</td><td>Privacidade e proteção de dados (LGPD)</td><td>Segurança</td><td>Tráfego HTTPS; nenhum dado sensível em logs ou respostas de erro</td><td class="warn">Parcial (certificado TLS no ambiente)</td></tr>
+    <tr><td>RNF-04</td><td>Desempenho (VAL-07)</td><td>Eficiência de desempenho</td><td>p95 &lt; 3 s em consulta de estoque e finalização de venda, inclusive com 20 operadores simultâneos</td><td class="ok">Atendido (local)</td></tr>
+    <tr><td>RNF-05</td><td>Consistência sob concorrência (VAL-08)</td><td>Confiabilidade</td><td>Nenhuma venda do mesmo saldo em duplicidade</td><td class="ok">Atendido</td></tr>
+    <tr><td>RNF-06</td><td>Integridade transacional e financeira</td><td>Confiabilidade</td><td>Operações atômicas; valores exatos em centavos</td><td class="ok">Atendido</td></tr>
+    <tr><td>RNF-07</td><td>Auditabilidade</td><td>Segurança (responsabilização)</td><td>100% das ações sensíveis registradas</td><td class="ok">Atendido</td></tr>
+    <tr><td>RNF-08</td><td>Interoperabilidade (API REST)</td><td>Compatibilidade</td><td>Contrato v2.3: JSON, RFC 7807, paginação padronizada</td><td class="ok">Atendido</td></tr>
+    <tr><td>RNF-09</td><td>Implantação em containers (Docker / AWS EC2)</td><td>Portabilidade</td><td>Subida com um comando (Docker Compose)</td><td class="warn">Pronto, não executado</td></tr>
+    <tr><td>RNF-10</td><td>Disponibilidade e tratamento de falhas</td><td>Confiabilidade</td><td>Health check público; falhas de banco → 503 sem detalhes; sessões e bloqueios preservados em reinícios</td><td class="ok">Atendido</td></tr>
+    <tr><td>RNF-11</td><td>Manutenibilidade e testabilidade</td><td>Manutenibilidade</td><td>Cobertura ≥ 80% das linhas e ≥ 70% dos ramos; esquema versionado</td><td class="ok">Atendido</td></tr>
+    <tr><td>RNF-12</td><td>Usabilidade</td><td>Usabilidade</td><td>Mensagens em português, claras e acionáveis; operação ágil no caixa</td><td class="warn">Parcial (front-end)</td></tr>
+  </tbody>
+</table>
+
+<h1 class="quebra">2. Detalhamento</h1>
+
+<div class="ficha"><div class="topo"><b>RNF-01 — Autenticação segura</b><span class="tag g">Segurança</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>O acesso a qualquer funcionalidade exige autenticação por CPF e senha (Regra 2.3, VAL-06).</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>Senhas armazenadas apenas como hash BCrypt; nunca em texto, nunca devolvidas pela API.</li>
+    <li>Token JWT assinado (HS256) com validade de 24 h. A aplicação não inicia sem uma chave secreta de pelo menos 32 caracteres.</li>
+    <li>Respostas de login idênticas, inclusive no tempo, para CPF inexistente e senha errada.</li>
+    <li>Logout, renovação, inativação e mudança de perfil invalidam tokens anteriores. A lista de tokens revogados fica no banco: vale após reinício e entre várias instâncias.</li>
+    <li>Token expirado é recusado (tolerância de 30 s para diferença de relógio).</li>
+    <li>Proteção contra força bruta: 5 senhas erradas por CPF ou 20 por IP em 15 min bloqueiam o login por 15 min (HTTP 429 com <code>Retry-After</code>). CPF inexistente é bloqueado igual, para não revelar quem é usuário. A senha do gerente usada no desconto tem o mesmo limite, por vendedor. Todo bloqueio é auditado.</li></ul></td></tr>
+  <tr><td>Verificação</td><td>CT-AUTH-001 a 009, CT-AUTH-U01 a U06, CT-SEG-001 a 004, CT-SEG-009 a 017, CT-SEG-019, CT-VEN-U24 — <span class="ok">aprovados</span></td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-02 — Autorização por perfil</b><span class="tag g">Segurança</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>Vendedores só vendem, cadastram clientes e consultam; ações administrativas são exclusivas do Gerente (VAL-02).</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>Permissão verificada em duas camadas: no filtro de segurança, antes de ler a requisição, e no controller.</li>
+    <li>O Vendedor recebe 403 nas rotas do Gerente, nunca um erro de validação que revele regras internas.</li>
+    <li>O Vendedor não acessa caixas, vendas nem comissões de outros vendedores trocando o identificador na URL.</li></ul></td></tr>
+  <tr><td>Verificação</td><td>CT-SEG-005 (9 rotas), CT-SEG-006, CT-API-007, CT-HIS-001/002, CT-COM-002 — <span class="ok">aprovados</span></td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-03 — Privacidade e proteção de dados (LGPD)</b><span class="tag g">Segurança</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>Dados pessoais de clientes e funcionários (CPF/CNPJ, e-mail) devem ser protegidos (VAL-06).</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>Tráfego protegido por HTTPS no ambiente de produção. Com <code>PDV_EXIGIR_HTTPS=true</code> a API redireciona HTTP para HTTPS e envia HSTS (1 ano); cabeçalhos <code>X-Content-Type-Options</code>, <code>X-Frame-Options</code> e <code>Cache-Control</code> em todas as respostas.</li>
+    <li>Respostas de erro sem SQL, stack trace ou dados de conexão.</li>
+    <li>Logs de tentativa de login com CPF mascarado (4 últimos dígitos).</li>
+    <li>Testes usam somente CPF/CNPJ sintéticos, nunca documentos de pessoas reais.</li></ul></td></tr>
+  <tr><td>Verificação</td><td>CT-API-008/009, CT-AUTH-U04, CT-USR-001, CT-SEG-018, CT-SEG-020 — <span class="ok">aprovados</span>. Certificado TLS: <span class="warn">pendente</span> (proxy/balanceador do ambiente AWS)</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-04 — Desempenho (VAL-07)</b><span class="tag g">Eficiência de desempenho</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>Consultas de estoque, inclusão de itens e finalização de vendas devem ser concluídas em menos de 3 segundos.</td></tr>
+  <tr><td>Critérios</td><td>Percentil 95 abaixo de 3.000 ms com 1.000 produtos cadastrados; consultas paginadas (máximo de 100 itens por página).</td></tr>
+  <tr><td>Resultado medido</td><td>Listar 1.000 produtos: p95 74 ms · busca por nome: 36 ms · venda com 10 itens: 59 ms · consulta unitária: 9 ms · <b>carga com 20 operadores simultâneos</b> (consulta + venda, 440 requisições, 148 req/s): p95 281 ms, pior requisição 981 ms, 0 erros</td></tr>
+  <tr><td>Proteção</td><td>A aplicação aquece o pool de conexões e as consultas principais antes de aceitar tráfego; sem isso a primeira rajada após a subida chegava a 4 s (DEF-WEB-006).</td></tr>
+  <tr><td>Verificação</td><td>CT-PERF-001 a 005 — <span class="ok">aprovados</span> em ambiente local. Pendente: teste de carga (JMeter) na infraestrutura AWS.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-05 — Consistência sob concorrência (VAL-08)</b><span class="tag g">Confiabilidade</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>Vendas simultâneas não podem vender o mesmo saldo duas vezes (risco "Consistência de Estoque" do Plano, 1.9).</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>Produtos bloqueados no banco durante a finalização da venda, sempre na mesma ordem (sem impasse/deadlock).</li>
+    <li>Cancelamentos, sangrias e aberturas de caixa simultâneos também são serializados.</li>
+    <li>O banco impede estoque negativo e mais de um caixa aberto por operador, mesmo que a aplicação falhe.</li></ul></td></tr>
+  <tr><td>Verificação</td><td>CT-CONC-001 (repetido 10 vezes a cada execução): 20 vendas simultâneas com estoque 5 → exatamente 5 concluídas. CT-CONC-002 a 004, CT-SEG-019, CT-DB-002/003 — <span class="ok">aprovados</span></td></tr>
+  <tr><td>Observação</td><td>A reserva de saldo enquanto o item está no carrinho (estoque tripartido) foi adiada para a próxima fase (ADR-001, D-02).</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-06 — Integridade transacional e financeira</b><span class="tag g">Confiabilidade</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>Operações financeiras devem ser exatas e completas, nunca parciais.</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>Valores em <code>BigDecimal</code> / <code>NUMERIC(10,2)</code>, nunca em ponto flutuante; arredondamento comercial em centavos.</li>
+    <li>Venda, itens, baixa de estoque e auditoria numa única transação; qualquer falha desfaz tudo.</li>
+    <li>O banco garante total = subtotal − descontos e total ≥ 0.</li>
+    <li>Preço praticado sempre vem do catálogo; vendas são imutáveis após o registro.</li></ul></td></tr>
+  <tr><td>Verificação</td><td>CT-CALC-001 a 008, CT-VEN-012/013, CT-DB-004, CT-AUD-004 — <span class="ok">aprovados</span></td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-07 — Auditabilidade</b><span class="tag g">Segurança</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>Toda ação sensível deve deixar registro com usuário, data/hora, tipo de ação e valores anterior/novo (Regra 1.2).</td></tr>
+  <tr><td>Critérios</td><td>25 tipos de ação auditados (inclui <code>ACESSO_BLOQUEADO</code> e <code>AUTORIZACAO_FALHA</code>); o registro é gravado na mesma transação da operação; consulta restrita ao Gerente.</td></tr>
+  <tr><td>Verificação</td><td>CT-AUD-001 a 004, CT-PROD-006/008, CT-USR-004, CT-CAN-002 — <span class="ok">aprovados</span></td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-08 — Interoperabilidade (API REST)</b><span class="tag g">Compatibilidade</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>O backend expõe uma API REST conforme a Documentação da API v2.3, consumível por qualquer front-end.</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>JSON em <code>snake_case</code>; datas ISO-8601 com fuso −03:00.</li>
+    <li>Erros no padrão RFC 7807 com <code>invalid_params</code>; códigos HTTP 400, 401, 403, 404, 405, 409, 422 e 503 com significado fixo.</li>
+    <li>Listagens com <code>pagina</code>, <code>limite</code>, <code>total_registros</code>, <code>total_paginas</code> e <code>dados</code>.</li>
+    <li>PUT substitui o recurso; PATCH altera parcialmente; DELETE faz exclusão lógica.</li></ul></td></tr>
+  <tr><td>Verificação</td><td>CT-API-001 a 012, CT-PAG-001 a 005, CT-PROD-011, CT-SMK-001 a 003 — <span class="ok">aprovados</span></td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-09 — Implantação em containers (Docker / AWS EC2)</b><span class="tag g">Portabilidade</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>O sistema roda containerizado (Docker Compose) numa instância AWS EC2.</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>Imagem com build em duas etapas, executada por usuário sem privilégios, no fuso America/Sao_Paulo.</li>
+    <li>Configuração somente por variáveis de ambiente (nenhum segredo no código).</li>
+    <li>O esquema do banco é criado e atualizado automaticamente (Flyway) ao subir.</li>
+    <li>Executa em Linux e Windows (Java 25); scripts com fim de linha LF garantido.</li></ul></td></tr>
+  <tr><td>Verificação</td><td><span class="warn">Pendente</span> — Dockerfile e docker-compose escritos; execução prevista no roteiro RT-DEP-01 a 05. A API já rodou como servidor HTTP real (modo demonstração) e passou num smoke de 14 passos; a bateria tem pipeline Linux (GitHub Actions).</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-10 — Disponibilidade e tratamento de falhas</b><span class="tag g">Confiabilidade</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>O sistema deve indicar sua saúde e tratar falhas sem expor detalhes.</td></tr>
+  <tr><td>Critérios</td><td>Endpoint público <code>/actuator/health</code> para o balanceador; demais endpoints de monitoramento fechados; banco indisponível → 503; erro inesperado → 500 genérico. Prontidão só depois do aquecimento; desligamento gracioso (requisições em andamento terminam, até 20 s); revogações e bloqueios guardados no banco sobrevivem a reinícios.</td></tr>
+  <tr><td>Verificação</td><td>CT-SMK-001, CT-SEG-008, CT-SEG-011, CT-API-008/009 — <span class="ok">aprovados</span></td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-11 — Manutenibilidade e testabilidade</b><span class="tag g">Manutenibilidade</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>O código deve ser organizado, testável e com evolução controlada.</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>Código organizado por módulo de negócio (venda, caixa, produto…) e camadas (controller, serviço, repositório).</li>
+    <li>Cobertura mínima verificada no build: 80% das linhas e 70% dos ramos.</li>
+    <li>Esquema do banco versionado (Flyway); decisões de arquitetura registradas (ADR).</li>
+    <li>Testes de integração com banco real que não exigem Docker nem banco instalado.</li></ul></td></tr>
+  <tr><td>Resultado</td><td>Cobertura de 96,8% das linhas e 87,6% dos ramos; 100% dos mutantes cobertos detectados (12 classes); pipeline de integração contínua em Linux — <span class="ok">atendido</span></td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RNF-12 — Usabilidade</b><span class="tag g">Usabilidade</span></div><div class="corpo"><table>
+  <tr><td>Requisito</td><td>Operação ágil na frente de caixa e mensagens compreensíveis (Plano 1.10).</td></tr>
+  <tr><td>Critérios</td><td><ul>
+    <li>Mensagens de erro em português, indicando o campo e o motivo (ex.: "Estoque atual é 1, mas foi solicitado 3.").</li>
+    <li>Busca de produto por código ou nome; leitura por código de barras (EAN).</li>
+    <li>Telas do Vendedor e do Gerente com alertas visuais de estoque crítico.</li></ul></td></tr>
+  <tr><td>Verificação</td><td>Mensagens: <span class="ok">verificadas</span> nos testes de API. Telas: <span class="warn">pendente</span> (front-end, Ciclo 2).</td></tr>
+</table></div></div>
+</body></html>

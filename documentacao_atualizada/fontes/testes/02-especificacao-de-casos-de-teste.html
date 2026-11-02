@@ -1,0 +1,2601 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Especificação de Casos de Teste</title>
+<link rel="stylesheet" href="../estilo.css"></head><body>
+<div class="doc-cabecalho"><div class="projeto">PDV Web · Documentação de Testes</div><div class="titulo">Especificação de Casos de Teste</div></div>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Identificador</td>
+<td>ECT-PDV-001</td>
+</tr>
+<tr>
+<td>Versão</td>
+<td>1.2 — 28/10/2026 (Ciclo 1.1: +37 casos de robustez; Ciclo 1.2: +7 casos de banco)</td>
+</tr>
+<tr>
+<td>Plano de origem</td>
+<td><a href="01-plano-de-testes.pdf">PT-PDV-001</a></td>
+</tr>
+<tr>
+<td>Total</td>
+<td><strong>239 casos de teste (CT)</strong> e <strong>16 cenários BDD</strong>, que somam <strong>320 execuções</strong> (casos parametrizados e repetidos executam uma vez por valor/repetição)</td>
+</tr>
+</tbody></table>
+<p><strong>Convenção de IDs</strong></p>
+<table>
+<thead>
+<tr>
+<th>Prefixo</th>
+<th>Módulo / tipo</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>CT-&lt;MÓDULO&gt;-NNN</code></td>
+<td>Caso automatizado de componente, integração ou sistema</td>
+</tr>
+<tr>
+<td><code>CT-&lt;MÓDULO&gt;-UNN</code></td>
+<td>Caso unitário</td>
+</tr>
+<tr>
+<td><code>BDD-&lt;GRUPO&gt;-NN</code></td>
+<td>Cenário de aceitação em Gherkin</td>
+</tr>
+</tbody></table>
+<p>O nome de cada teste automatizado começa com o ID do caso (<code>@DisplayName</code>). Por isso o resultado de cada caso
+pode ser localizado em <a href="evidencias/casos-executados.tsv">evidencias/casos-executados.tsv</a>.</p>
+<hr>
+<h2>1. Análise de requisitos e condições de teste</h2>
+<p>Etapas 1 e 2 do Tutorial: cada requisito foi decomposto em regras verificáveis, e cada regra em condições válidas e inválidas.</p>
+<table>
+<thead>
+<tr>
+<th>Requisito</th>
+<th>Regras extraídas</th>
+<th>Condições de teste</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>VAL-01</strong> Bloqueio de saldo insuficiente</td>
+<td>R1: quantidade ≤ estoque atual. R2: bloqueio impede a gravação da venda. R3: mensagem informa o estoque atual.</td>
+<td>Quantidade &lt; saldo, = saldo, &gt; saldo; vários itens com um sem saldo; mesmo produto repetido no carrinho; vendas simultâneas do último item</td>
+</tr>
+<tr>
+<td><strong>VAL-02</strong> Controle de perfil</td>
+<td>Vendedor: vende e cadastra clientes. Gerente: cancela, estorna, ajusta estoque, dá desconto direto, faz sangria, emite cupom, gerencia usuários e vê auditoria.</td>
+<td>Cada operação exclusiva do Gerente chamada pelo Vendedor; corpo inválido enviado por perfil sem permissão</td>
+</tr>
+<tr>
+<td><strong>VAL-03</strong> Estorno no cancelamento</td>
+<td>Cancelar devolve as quantidades ao estoque e retira a venda dos totais.</td>
+<td>Cancelar uma vez; cancelar duas vezes; cancelar em paralelo; totais de caixa e comissão após o cancelamento</td>
+</tr>
+<tr>
+<td><strong>VAL-04</strong> Estoque crítico</td>
+<td>Alerta quando estoque ≤ mínimo.</td>
+<td>Estoque = mínimo+1, = mínimo, = mínimo−1, = 0; alerta na resposta da venda e no filtro</td>
+</tr>
+<tr>
+<td><strong>VAL-05</strong> Controle de caixa</td>
+<td>Venda só com caixa aberto do próprio operador; sangria registra saída imediata.</td>
+<td>Sem caixa; caixa fechado; caixa de outro operador; sangria acima do saldo; abertura duplicada</td>
+</tr>
+<tr>
+<td><strong>VAL-06</strong> Segurança</td>
+<td>Login CPF/senha; senha em hash BCrypt; token assinado e coerente com o cadastro atual.</td>
+<td>Senha certa/errada; CPF inexistente; usuário inativo; perfil alterado após a emissão do token; token adulterado, malformado ou de outra chave; logout e refresh</td>
+</tr>
+<tr>
+<td><strong>VAL-07</strong> Desempenho</td>
+<td>Consulta de estoque, inclusão de item e finalização &lt; 3 s.</td>
+<td>1.000 produtos; venda com 10 itens; p95 de 20–30 amostras</td>
+</tr>
+<tr>
+<td><strong>VAL-08</strong> Reserva de estoque</td>
+<td>Itens no carrinho reservam saldo para evitar vendas concorrentes duplicadas.</td>
+<td>Reserva no carrinho <strong>não implementada</strong> (ADR D-02). O objetivo da regra (nada de venda duplicada do mesmo saldo) é verificado na finalização: vendas simultâneas, bloqueio de linha</td>
+</tr>
+<tr>
+<td><strong>UC06/UC07</strong> Descontos</td>
+<td>Cupom primeiro sobre o subtotal; desconto direto em R$ sobre o restante; Vendedor precisa da senha do gerente; total ≥ 0.</td>
+<td>Tabela de decisão (seção 2.2)</td>
+</tr>
+<tr>
+<td><strong>UC10</strong> Comissões</td>
+<td>Soma das vendas concluídas × percentual; Vendedor vê só a própria.</td>
+<td>Exemplo do contrato (15 vendas → R$ 225,00); venda cancelada excluída; mudança de percentual</td>
+</tr>
+<tr>
+<td><strong>UC12</strong> Produtos</td>
+<td>Preço &gt; 0; estoque ≥ 0; SKU único; NCM com 8 e CEST com 7 dígitos; soft delete.</td>
+<td>Valores-limite (seção 2.1); duplicidade; inativação</td>
+</tr>
+<tr>
+<td><strong>UC08</strong> Clientes</td>
+<td>CPF/CNPJ válido conforme o tipo; documento único; Consumidor Padrão protegido.</td>
+<td>Partições de documento; duplicidade; tentativa de alterar o Consumidor Padrão</td>
+</tr>
+<tr>
+<td><strong>Regra 1.2</strong> LOG</td>
+<td>Toda ação sensível gera log com usuário, data/hora, tipo e valores anterior/novo.</td>
+<td>Fluxo completo; operação que falha não deixa log</td>
+</tr>
+<tr>
+<td><strong>Contrato API</strong></td>
+<td>Paginação padronizada; erros RFC 7807; vendas imutáveis; PUT substitui e PATCH altera parcialmente.</td>
+<td>Metadados de página; JSON malformado; corpo ausente; 405 em PUT/DELETE de venda</td>
+</tr>
+</tbody></table>
+<h2>2. Aplicação das técnicas de teste</h2>
+<h3>2.1 Particionamento de equivalência e valores-limite</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Partição inválida (abaixo)</th>
+<th>Limites testados</th>
+<th>Partição válida</th>
+<th>Partição inválida (acima)</th>
+<th>Casos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>preco_venda</code> (R$)</td>
+<td>≤ 0</td>
+<td>−1,00 ✗ · 0,00 ✗ · <strong>0,01 ✓</strong> · <strong>99.999.999,99 ✓</strong> · 100.000.000,00 ✗ · 10,999 ✗</td>
+<td>0,01 – 99.999.999,99 com 2 casas</td>
+<td>&gt; 8 dígitos inteiros ou &gt; 2 casas</td>
+<td>CT-PROD-002, CT-API-003</td>
+</tr>
+<tr>
+<td><code>estoque_atual</code></td>
+<td>&lt; 0</td>
+<td>−1 ✗ · <strong>0 ✓</strong> · <strong>1.000.000 ✓</strong> · 1.000.001 ✗</td>
+<td>0 – 1.000.000</td>
+<td>&gt; 1.000.000</td>
+<td>CT-PROD-003</td>
+</tr>
+<tr>
+<td>Quantidade vendida × estoque</td>
+<td>—</td>
+<td>qtd = saldo−1 ✓ · <strong>qtd = saldo ✓</strong> · qtd = saldo+1 ✗</td>
+<td>qtd ≤ saldo</td>
+<td>qtd &gt; saldo</td>
+<td>CT-VEN-001/002/015, CT-PROD-U02/U03</td>
+</tr>
+<tr>
+<td>Quantidade do item</td>
+<td>≤ 0</td>
+<td>0 ✗ · <strong>1 ✓</strong> · <strong>10.000 ✓</strong></td>
+<td>1 – 10.000</td>
+<td>&gt; 10.000</td>
+<td>CT-VEN-016</td>
+</tr>
+<tr>
+<td>Estoque crítico (mínimo = 2)</td>
+<td>—</td>
+<td>3 → sem alerta · <strong>2 → alerta</strong> · 1 → alerta · 0 → alerta</td>
+<td>—</td>
+<td>—</td>
+<td>CT-PROD-U01, CT-PROD-010, CT-VEN-003</td>
+</tr>
+<tr>
+<td><code>percentual_comissao</code></td>
+<td>&lt; 0</td>
+<td>−0,01 ✗ · <strong>0,00 ✓</strong> · <strong>100,00 ✓</strong> · 100,01 ✗</td>
+<td>0 – 100</td>
+<td>&gt; 100</td>
+<td>CT-USR-002, CT-CALC-007</td>
+</tr>
+<tr>
+<td>Cupom percentual</td>
+<td>≤ 0</td>
+<td><strong>100,00 ✓</strong> · 100,01 ✗</td>
+<td>0,01 – 100</td>
+<td>&gt; 100</td>
+<td>CT-CUP-009, CT-CUP-012</td>
+</tr>
+<tr>
+<td>Vigência do cupom</td>
+<td>antes do início</td>
+<td>início −1 s ✗ · <strong>início ✓</strong> · <strong>término ✓</strong> · término +1 s ✗</td>
+<td>[início, término]</td>
+<td>depois do término</td>
+<td>CT-CUP-001 a 004</td>
+</tr>
+<tr>
+<td>Período do cupom</td>
+<td>término ≤ início</td>
+<td>término = início ✗ · término = início +1 s ✓</td>
+<td>término &gt; início</td>
+<td>—</td>
+<td>CT-CUP-010</td>
+</tr>
+<tr>
+<td>Desconto direto × restante</td>
+<td>&lt; 0</td>
+<td>−0,01 ✗ · <strong>= restante ✓ (total 0,00)</strong> · restante +0,01 ✗</td>
+<td>0 – restante</td>
+<td>&gt; restante</td>
+<td>CT-CALC-002/003/004, CT-VEN-009</td>
+</tr>
+<tr>
+<td>Sangria × saldo em dinheiro</td>
+<td>≤ 0</td>
+<td><strong>= saldo ✓</strong> · saldo +0,01 ✗</td>
+<td>0,01 – saldo</td>
+<td>&gt; saldo</td>
+<td>CT-CX-U11, CT-CX-006</td>
+</tr>
+<tr>
+<td>Suprimento inicial</td>
+<td>&lt; 0</td>
+<td>−0,01 ✗ · <strong>0 ✓</strong></td>
+<td>≥ 0</td>
+<td>—</td>
+<td>CT-CX-003</td>
+</tr>
+<tr>
+<td>Nova senha</td>
+<td>&lt; 8 caracteres</td>
+<td>7 ✗ · <strong>8 ✓</strong></td>
+<td>8 – 72</td>
+<td>&gt; 72</td>
+<td>CT-AUTH-008</td>
+</tr>
+<tr>
+<td><code>limite</code> de paginação</td>
+<td>&lt; 1</td>
+<td>0 ✗ · <strong>1 ✓</strong> · <strong>100 ✓</strong> · 101 ✗</td>
+<td>1 – 100</td>
+<td>&gt; 100</td>
+<td>CT-PAG-002/003, CT-PROD-011</td>
+</tr>
+<tr>
+<td><code>pagina</code></td>
+<td>&lt; 1</td>
+<td>0 ✗ · <strong>1 ✓</strong></td>
+<td>≥ 1</td>
+<td>—</td>
+<td>CT-PAG-004</td>
+</tr>
+<tr>
+<td>Arredondamento da comissão (HALF_UP)</td>
+<td>—</td>
+<td>0,0045 → 0,00 · <strong>0,005 → 0,01</strong> · 0,2525 → 0,25 · 0,2575 → 0,26</td>
+<td>—</td>
+<td>—</td>
+<td>CT-CALC-006</td>
+</tr>
+<tr>
+<td>CPF</td>
+<td>—</td>
+<td>10 ✗ · <strong>11 ✓</strong> · 12 ✗ dígitos; DV1/DV2 errados ✗; dígitos repetidos ✗; nulo/vazio/letras ✗; resto 2 → DV 9 ✓</td>
+<td>11 dígitos com DV correto</td>
+<td>—</td>
+<td>CT-DOC-001 a 007, 012</td>
+</tr>
+<tr>
+<td>CNPJ</td>
+<td>—</td>
+<td>13 ✗ · <strong>14 ✓</strong> · 15 ✗; DV errado ✗; repetido ✗</td>
+<td>14 dígitos com DV correto</td>
+<td>—</td>
+<td>CT-DOC-008 a 011</td>
+</tr>
+<tr>
+<td>NCM / CEST</td>
+<td>—</td>
+<td>NCM 7 ✗ · <strong>8 ✓</strong> · 9 ✗; CEST 6 ✗ · <strong>7 ✓</strong>; letras ✗; vazio → nulo ✓</td>
+<td>Só dígitos (pontuação opcional)</td>
+<td>—</td>
+<td>CT-PROD-U05 a U07</td>
+</tr>
+</tbody></table>
+<h3>2.2 Tabela de decisão — descontos na venda (UC06 / UC07)</h3>
+<p>Condições: perfil do operador (C1), cupom vigente (C2), desconto direto informado (C3), senha de gerente (C4), desconto ≤ restante (C5).</p>
+<table>
+<thead>
+<tr>
+<th>Regra</th>
+<th>C1 Perfil</th>
+<th>C2 Cupom</th>
+<th>C3 Desc. direto</th>
+<th>C4 Senha gerente</th>
+<th>C5 ≤ restante</th>
+<th>Ação esperada</th>
+<th>Total (subtotal R$ 250, cupom 10%, direto R$ 10)</th>
+<th>Casos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>R1</td>
+<td>Vendedor</td>
+<td>Não</td>
+<td>Não</td>
+<td>—</td>
+<td>—</td>
+<td>201</td>
+<td>250,00</td>
+<td>BDD-DES R1, CT-CALC-001</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>Vendedor</td>
+<td>Sim</td>
+<td>Não</td>
+<td>—</td>
+<td>—</td>
+<td>201</td>
+<td>225,00</td>
+<td>BDD-DES R2, CT-CALC-001</td>
+</tr>
+<tr>
+<td>R3</td>
+<td>Vendedor</td>
+<td>Não</td>
+<td>Sim</td>
+<td>Ausente</td>
+<td>—</td>
+<td><strong>403</strong></td>
+<td>—</td>
+<td>BDD-DES R3, CT-VEN-006, CT-VEN-U12</td>
+</tr>
+<tr>
+<td>R4</td>
+<td>Vendedor</td>
+<td>Não</td>
+<td>Sim</td>
+<td>Incorreta</td>
+<td>—</td>
+<td><strong>403</strong></td>
+<td>—</td>
+<td>BDD-DES R4, CT-VEN-007</td>
+</tr>
+<tr>
+<td>R5</td>
+<td>Vendedor</td>
+<td>Não</td>
+<td>Sim</td>
+<td>Correta</td>
+<td>Sim</td>
+<td>201</td>
+<td>240,00</td>
+<td>BDD-DES R5, CT-VEN-U13</td>
+</tr>
+<tr>
+<td>R6</td>
+<td>Vendedor</td>
+<td>Sim</td>
+<td>Sim</td>
+<td>Correta</td>
+<td>Sim</td>
+<td>201</td>
+<td><strong>215,00</strong> (exemplo do contrato)</td>
+<td>BDD-DES R6, CT-VEN-004</td>
+</tr>
+<tr>
+<td>R7</td>
+<td>Gerente</td>
+<td>Sim</td>
+<td>Sim</td>
+<td>Dispensada</td>
+<td>Sim</td>
+<td>201</td>
+<td>215,00</td>
+<td>BDD-DES R7, CT-VEN-008</td>
+</tr>
+<tr>
+<td>R8</td>
+<td>Gerente</td>
+<td>Sim</td>
+<td>Sim</td>
+<td>Dispensada</td>
+<td><strong>Não</strong></td>
+<td><strong>422</strong> desconto-invalido</td>
+<td>—</td>
+<td>BDD-DES R8, CT-VEN-009, CT-CALC-003</td>
+</tr>
+<tr>
+<td>R9</td>
+<td>qualquer</td>
+<td>Inválido (expirado, futuro, inexistente)</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td><strong>422</strong> cupom-invalido</td>
+<td>—</td>
+<td>CT-VEN-010</td>
+</tr>
+</tbody></table>
+<p>Regra de ordem: o desconto do cupom incide primeiro; o desconto direto (R$ fixo) incide sobre o restante.
+Por isso, em R6, 250,00 − 25,00 − 10,00 = 215,00 e a comissão de 5% fica em R$ 10,75.</p>
+<h3>2.3 Testes baseados em estados</h3>
+<figure><pre class="mermaid">stateDiagram-v2
+    [*] --&gt; ABERTO: POST /caixas/abertura
+    ABERTO --&gt; ABERTO: venda / sangria / suprimento
+    ABERTO --&gt; FECHADO: POST /caixas/{id}/fechamento
+    FECHADO --&gt; [*]
+    note right of FECHADO: rejeita fechamento, sangria e venda (422)
+</pre></figure>
+<table>
+<thead>
+<tr>
+<th>Estado atual</th>
+<th>Ação</th>
+<th>Resultado esperado</th>
+<th>Casos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>(sem caixa)</td>
+<td>Abrir caixa</td>
+<td>ABERTO (201)</td>
+<td>CT-CX-001</td>
+</tr>
+<tr>
+<td>ABERTO</td>
+<td>Abrir outro caixa</td>
+<td>Rejeitar (409)</td>
+<td>CT-CX-002, CT-CX-U10, CT-CONC-004, CT-DB-003</td>
+</tr>
+<tr>
+<td>ABERTO</td>
+<td>Vender / sangria / suprimento</td>
+<td>Permitido</td>
+<td>CT-CX-004, CT-CX-008</td>
+</tr>
+<tr>
+<td>ABERTO</td>
+<td>Fechar</td>
+<td>FECHADO, com a diferença calculada</td>
+<td>CT-CX-009, CT-CX-U01</td>
+</tr>
+<tr>
+<td>FECHADO</td>
+<td>Fechar, sangria ou vender</td>
+<td>Rejeitar (422)</td>
+<td>CT-CX-010, CT-CX-U02, CT-CX-U13, BDD-CX-02</td>
+</tr>
+<tr>
+<td>FECHADO</td>
+<td>Abrir novo caixa</td>
+<td>Novo caixa ABERTO</td>
+<td>CT-CX-012</td>
+</tr>
+</tbody></table>
+<figure><pre class="mermaid">stateDiagram-v2
+    [*] --&gt; CONCLUIDA: POST /vendas
+    CONCLUIDA --&gt; CANCELADA: POST /vendas/{id}/cancelar (Gerente)
+    CANCELADA --&gt; [*]
+    note right of CANCELADA: novo cancelamento → 422; PUT/PATCH/DELETE → 405
+</pre></figure>
+<table>
+<thead>
+<tr>
+<th>Estado atual</th>
+<th>Ação</th>
+<th>Resultado esperado</th>
+<th>Casos</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CONCLUIDA</td>
+<td>Cancelar (Vendedor)</td>
+<td>Rejeitar (403)</td>
+<td>CT-CAN-001, BDD-CAN-01</td>
+</tr>
+<tr>
+<td>CONCLUIDA</td>
+<td>Cancelar (Gerente)</td>
+<td>CANCELADA + estorno</td>
+<td>CT-CAN-002, CT-VEN-U01, BDD-CAN-02</td>
+</tr>
+<tr>
+<td>CANCELADA</td>
+<td>Cancelar</td>
+<td>Rejeitar (422), sem novo estorno</td>
+<td>CT-CAN-003, CT-VEN-U02, CT-CONC-002, BDD-CAN-03</td>
+</tr>
+<tr>
+<td>qualquer</td>
+<td>PUT / PATCH / DELETE</td>
+<td>405 (vendas imutáveis)</td>
+<td>CT-VEN-019</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>3. Casos de teste detalhados (prioridade P1)</h2>
+<p>Formato do Tutorial, seção 6. Os demais casos seguem o mesmo padrão e estão resumidos no catálogo (seção 4);
+o detalhe completo de cada um está no código do teste correspondente.</p>
+<h3>CT-VEN-002 — Bloqueio por saldo insuficiente (Prod-02 Tênis 41)</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>VAL-01, UC05, Regra 2.1, Regras de Sistema seção 3 (linha 2)</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · negativo · integração</td>
+</tr>
+<tr>
+<td>Pré-condições</td>
+<td>Vendedor autenticado com caixa aberto; produto &quot;Tênis 41&quot; com estoque 1</td>
+</tr>
+<tr>
+<td>Dados de entrada</td>
+<td><code>{&quot;caixa_id&quot;: &lt;caixa&gt;, &quot;modalidade_pagamento&quot;: &quot;DINHEIRO&quot;, &quot;itens&quot;: [{&quot;produto_id&quot;: &lt;tênis&gt;, &quot;quantidade&quot;: 3}]}</code></td>
+</tr>
+<tr>
+<td>Passos</td>
+<td>1. Cadastrar o produto com estoque 1 (Gerente). 2. Abrir o caixa (Vendedor). 3. <code>POST /vendas</code> com quantidade 3. 4. Consultar o estoque e as tabelas <code>vendas</code>/<code>itens_venda</code>.</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>HTTP 422; <code>type</code> = <code>.../estoque-insuficiente</code>; <code>title</code> = &quot;Estoque Insuficiente&quot;; <code>invalid_params[0]</code> = {<code>name</code>: &quot;produto_id: <id>&quot;, <code>reason</code>: &quot;Estoque atual é 1, mas foi solicitado 3.&quot;}; estoque continua 1; nenhuma venda nem item gravado</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>VendaIT.ExemplosRegrasDeSistema#tenis</code> · também BDD-EST-01 (Tênis 41) e BDD-EST-02</td>
+</tr>
+<tr>
+<td>Resultado obtido / status</td>
+<td>Conforme esperado · <strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-VEN-004 — Venda com cupom e desconto direto (exemplo do contrato v2.3)</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>UC04, UC06, UC07, UC10, API v2.3 seção 3.4</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · positivo · integração</td>
+</tr>
+<tr>
+<td>Pré-condições</td>
+<td>Vendedor com 5% de comissão e caixa aberto; produto de R$ 250,00 com estoque 15; cupom DESCONTO10 (10%) vigente; cliente cadastrado</td>
+</tr>
+<tr>
+<td>Dados de entrada</td>
+<td>Payload do contrato, com <code>desconto_direto_gerente: 10.00</code> e a senha do gerente</td>
+</tr>
+<tr>
+<td>Passos</td>
+<td>1. Preparar a massa. 2. <code>POST /vendas</code>. 3. Ler a venda no banco. 4. Consultar a auditoria e o estoque.</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>201; <code>valor_subtotal</code> 250,00; <code>desconto_cupom</code> 25,00; <code>desconto_gerente</code> 10,00; <code>valor_total</code> 215,00; <code>comissao_vendedor</code> 10,75; <code>status</code> CONCLUIDA; <code>gerente_autorizador_id</code> = gerente; percentual congelado 5,00; 1 log <code>DESCONTO_GERENTE</code>; estoque 14</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>VendaIT#exemploDoContrato</code> · BDD-DES R6</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-CAN-002 — Cancelamento pelo Gerente com estorno</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>UC11, VAL-03, Regra 2.2, Regra 1.2</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · positivo · integração</td>
+</tr>
+<tr>
+<td>Pré-condições</td>
+<td>Venda CONCLUIDA de 2 unidades (estoque foi de 15 para 13)</td>
+</tr>
+<tr>
+<td>Passos</td>
+<td>1. <code>POST /vendas/{id}/cancelar</code> como Gerente, com motivo. 2. Consultar a venda, o estoque e a auditoria.</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>200 &quot;Venda cancelada com sucesso. Estoque estornado.&quot;; status CANCELADA com o motivo; estoque volta a 15; log <code>CANCELAMENTO_VENDA</code> com o motivo e os itens estornados</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>CancelamentoEConsultaIT#gerenteCancela</code> · BDD-CAN-02</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-CAN-001 — Vendedor tenta cancelar (acesso negado)</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>VAL-02, Regra 2.2, Regras de Sistema seção 3 (linha 4)</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · segurança · integração</td>
+</tr>
+<tr>
+<td>Passos</td>
+<td><code>POST /vendas/{id}/cancelar</code> com o token do Vendedor</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>403, <code>title</code> &quot;Acesso Negado&quot;; estoque inalterado</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>CancelamentoEConsultaIT#vendedorNaoCancela</code> · BDD-CAN-01</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-CONC-001 — Venda simultânea do último lote</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>Plano de Projeto 1.9 (risco de consistência de estoque), VAL-01, VAL-08 (reserva/concorrência)</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · concorrência · integração</td>
+</tr>
+<tr>
+<td>Pré-condições</td>
+<td>Produto com estoque 5; 10 vendedores, cada um com caixa aberto</td>
+</tr>
+<tr>
+<td>Passos</td>
+<td>Disparar 20 <code>POST /vendas</code> de 1 unidade <strong>ao mesmo tempo</strong> (20 threads liberadas por <code>CountDownLatch</code>)</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>Exatamente 5 respostas 201 e 15 respostas 422; estoque final 0; 5 vendas e 5 unidades em <code>itens_venda</code></td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>ConcorrenciaIT#vendasSimultaneas</code></td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-SEG-005 — Matriz RBAC</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>VAL-02</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · segurança · integração · parametrizado (9 operações)</td>
+</tr>
+<tr>
+<td>Dados</td>
+<td><code>POST /produtos</code>, <code>POST /cupons</code>, <code>POST /usuarios</code>, <code>GET /usuarios</code>, <code>GET /auditoria</code>, <code>POST /vendas/1/cancelar</code>, <code>POST /caixas/1/sangria</code>, <code>DELETE /clientes/2</code>, <code>DELETE /produtos/1</code> — chamados pelo Vendedor com corpo <code>{}</code></td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>403 <code>acesso-negado</code> em todas, <strong>antes</strong> de qualquer validação do corpo</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>SegurancaIT#matrizRbac</code></td>
+</tr>
+<tr>
+<td>Histórico</td>
+<td>Ciclo 1: 5 de 9 falharam (400 em vez de 403) → <strong>DEF-WEB-001</strong> → corrigido → <strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-SEG-009 — Mudança de perfil invalida tokens emitidos</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>VAL-02, VAL-06, UC13</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · segurança · integração</td>
+</tr>
+<tr>
+<td>Origem</td>
+<td>Hipótese da sessão exploratória EXP-02, automatizada antes da sessão</td>
+</tr>
+<tr>
+<td>Passos</td>
+<td>1. Promover um vendedor a GERENTE. 2. Login → token A. 3. <code>GET /usuarios</code> com A. 4. Rebaixar o usuário a VENDEDOR. 5. <code>GET /usuarios</code> com A. 6. Novo login → token B. 7. <code>GET /usuarios</code> e <code>GET /produtos</code> com B.</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>(3) 200 · (5) <strong>401</strong> · (7) 403 em <code>/usuarios</code> e 200 em <code>/produtos</code></td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>SegurancaIT#perfilAlteradoInvalidaToken</code></td>
+</tr>
+<tr>
+<td>Histórico</td>
+<td>1ª execução: passo 5 retornou 200 → <strong>DEF-WEB-002</strong> → corrigido → <strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-VEN-012 — Preço adulterado no payload</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>ADR-001 D-06, integridade financeira</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · segurança · integração</td>
+</tr>
+<tr>
+<td>Dados</td>
+<td>Notebook de R$ 3.500,00 enviado com <code>&quot;preco_unitario&quot;: 0.01</code></td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>201 com <code>valor_total</code> 3.500,00 (vale o preço do catálogo)</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>VendaIT#precoAdulterado</code> · <code>VendaServiceTest#precoDoCatalogo</code></td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-CX-010 — Caixa fechado bloqueia operações</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>VAL-05, UC03</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · baseado em estados · integração</td>
+</tr>
+<tr>
+<td>Passos</td>
+<td>1. Abrir e fechar o caixa. 2. Fechar de novo. 3. Fazer sangria. 4. Vender. 5. <code>GET /caixas/atual</code>.</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>Passos 2–4: 422 (<code>caixa-fechado</code> na venda); passo 5: 404</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>CaixaIT#caixaFechado</code> · BDD-CX-02</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-AUTH-001 / 002 / 003 — Autenticação</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>UC01, VAL-06</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · positivo/negativo/segurança · integração</td>
+</tr>
+<tr>
+<td>Dados</td>
+<td>CPF com máscara e senha correta; senha incorreta; CPF inexistente</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>(001) 200 com token, expiração em ~24 h no fuso −03:00 e perfil GERENTE; log <code>LOGIN_SUCESSO</code>. (002) 401 &quot;CPF ou senha inválidos.&quot; e log <code>LOGIN_FALHA</code>. (003) mesma resposta 401, sem revelar se o CPF existe</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>AutenticacaoIT</code> · <code>AuthServiceTest</code> (U01–U04)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<h3>CT-API-008 — Banco de dados indisponível</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Requisito</td>
+<td>Tutorial 4.4 (exceção), contrato de erros</td>
+</tr>
+<tr>
+<td>Prioridade / tipo</td>
+<td>P1 · exceção · componente</td>
+</tr>
+<tr>
+<td>Dados</td>
+<td>O serviço lança <code>DataAccessResourceFailureException(&quot;Connection refused: localhost:5432 (senha=xyz)&quot;)</code></td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>503 <code>servico-indisponivel</code>; o corpo <strong>não</strong> contém &quot;5432&quot; nem &quot;senha&quot;</td>
+</tr>
+<tr>
+<td>Automação</td>
+<td><code>ProdutoControllerWebTest#bancoIndisponivel</code></td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Aprovado</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>4. Catálogo completo</h2>
+<p>Legenda — <strong>Nível:</strong> U = unitário · C = componente/API · I = integração · S = sistema · A = aceitação (BDD).
+<strong>Técnica:</strong> EP = partição de equivalência · VL = valor-limite · TD = tabela de decisão · ES = estados ·
+NEG = negativo · SEG = segurança · EXC = exceção · CONC = concorrência · DES = desempenho · POS = positivo.</p>
+<h3>4.1 Autenticação e segurança — <code>AutenticacaoIT</code>, <code>AuthServiceTest</code>, <code>SegurancaIT</code>, <code>RobustezSegurancaIT</code>, <code>ConfiguracoesAlternativasIT</code>, <code>FumacaIT</code></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Requisito</th>
+<th>Técnica</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-AUTH-001</td>
+<td>Login válido retorna JWT, expiração de 24 h e perfil</td>
+<td>UC01</td>
+<td>POS</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-AUTH-002</td>
+<td>Senha incorreta → 401 e LOGIN_FALHA auditado</td>
+<td>UC01, R1.2</td>
+<td>NEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-AUTH-003</td>
+<td>CPF inexistente → mesma resposta 401</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-AUTH-004</td>
+<td>Login sem CPF ou senha → 400</td>
+<td>UC01</td>
+<td>NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-AUTH-005</td>
+<td>Logout revoga o token</td>
+<td>UC01</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-AUTH-006</td>
+<td>Refresh emite novo token e invalida o anterior</td>
+<td>UC01</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-AUTH-007</td>
+<td>Alterar senha (atual errada / correta)</td>
+<td>UC01</td>
+<td>POS/NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-AUTH-008</td>
+<td>Nova senha 7 ✗ / 8 ✓ caracteres</td>
+<td>VAL-06</td>
+<td>VL</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-AUTH-009</td>
+<td>Senha armazenada em BCrypt</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-AUTH-U01</td>
+<td>Senha incorreta: sem token, tentativa auditada</td>
+<td>UC01</td>
+<td>NEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-AUTH-U02</td>
+<td>CPF inexistente executa BCrypt (tempo constante)</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-AUTH-U03</td>
+<td>Usuário inativo não autentica</td>
+<td>UC13</td>
+<td>NEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-AUTH-U04</td>
+<td>Log mascara o CPF (4 últimos dígitos; limite de 4)</td>
+<td>LGPD</td>
+<td>VL</td>
+<td>U</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-AUTH-U05</td>
+<td>CPF ou IP já bloqueado → 429 antes de consultar usuário e sem BCrypt</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-AUTH-U06</td>
+<td>ACESSO_BLOQUEADO auditado só quando o limite do CPF ou do IP é atingido (4 combinações)</td>
+<td>R1.2, VAL-06</td>
+<td>TD</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-SEG-001</td>
+<td>Token adulterado → 401</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-002</td>
+<td>Token malformado → 401</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-SEG-003</td>
+<td>Token assinado com outra chave → 401</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-004</td>
+<td>Usuário inativado perde o acesso na hora</td>
+<td>UC13, VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-005</td>
+<td>Matriz RBAC (9 operações exclusivas do Gerente)</td>
+<td>VAL-02</td>
+<td>SEG/EP</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-006</td>
+<td>IDOR em <code>/caixas/{id}</code></td>
+<td>VAL-02</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-007</td>
+<td>SQL injection / script tratados como texto</td>
+<td>Segurança</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-SEG-008</td>
+<td>Só o health check do actuator é exposto</td>
+<td>Segurança</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-SEG-009</td>
+<td>Gerente rebaixado perde os privilégios na hora (token antigo invalidado)</td>
+<td>VAL-02, VAL-06, UC13</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-010</td>
+<td>Token com assinatura correta, mas expirado → 401</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-011</td>
+<td>Logout gravado no banco vale para outra instância da API (reinício)</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-012</td>
+<td>Limpeza periódica remove só tokens revogados já expirados</td>
+<td>Infra</td>
+<td>POS</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-SEG-013</td>
+<td>5 senhas erradas no CPF → 429 + Retry-After, mesmo com a senha certa</td>
+<td>VAL-06</td>
+<td>SEG/VL</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-014</td>
+<td>CPF inexistente bloqueado da mesma forma (não revela se existe)</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-015</td>
+<td>20 falhas do mesmo IP bloqueiam o IP; outro IP continua</td>
+<td>VAL-06</td>
+<td>SEG/VL</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-SEG-016</td>
+<td>Bloqueio expira; login com sucesso zera a contagem</td>
+<td>VAL-06</td>
+<td>ES</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-SEG-017</td>
+<td>5 senhas de gerente erradas no desconto → 429 e AUTORIZACAO_FALHA</td>
+<td>UC07, VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-018</td>
+<td>Cabeçalhos de segurança; HSTS em HTTPS</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-SEG-019</td>
+<td>10 tentativas erradas simultâneas não escapam do limite</td>
+<td>VAL-06</td>
+<td>CONC</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SEG-020</td>
+<td>Com <code>PDV_EXIGIR_HTTPS=true</code>, HTTP é redirecionado para HTTPS</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SMK-001</td>
+<td>Health check responde UP</td>
+<td>Infra</td>
+<td>POS</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SMK-002</td>
+<td>Rota protegida sem token → 401 RFC 7807</td>
+<td>Contrato</td>
+<td>NEG</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-SMK-003</td>
+<td>Cadastro com resposta em snake_case</td>
+<td>Contrato</td>
+<td>POS</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+</tbody></table>
+<h3>4.2 Contrato HTTP — <code>ProdutoControllerWebTest</code> (cenários API01–API08 do Tutorial)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Requisito</th>
+<th>Técnica</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-API-001</td>
+<td>JSON válido → 201</td>
+<td>UC12</td>
+<td>POS</td>
+<td>C</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-API-002</td>
+<td>Nome ausente → 400 <code>invalid_params[nome]</code></td>
+<td>UC12</td>
+<td>NEG</td>
+<td>C</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-API-003</td>
+<td>Preço negativo → 400 com a mensagem do contrato</td>
+<td>UC12</td>
+<td>NEG/VL</td>
+<td>C</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-API-004</td>
+<td>JSON malformado → 400</td>
+<td>Contrato</td>
+<td>EXC</td>
+<td>C</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-API-005</td>
+<td>Corpo ausente → 400</td>
+<td>Contrato</td>
+<td>EXC</td>
+<td>C</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-API-006</td>
+<td>Sem token → 401</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>C</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-API-007</td>
+<td>Vendedor → 403</td>
+<td>VAL-02</td>
+<td>SEG</td>
+<td>C</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-API-008</td>
+<td>Banco indisponível → 503 sem detalhes internos</td>
+<td>Contrato</td>
+<td>EXC</td>
+<td>C</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-API-009</td>
+<td>Erro inesperado → 500 genérico</td>
+<td>Contrato</td>
+<td>EXC</td>
+<td>C</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-API-010</td>
+<td>ID não numérico → 400</td>
+<td>Contrato</td>
+<td>NEG</td>
+<td>C</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-API-011</td>
+<td>Método não suportado → 405</td>
+<td>Contrato</td>
+<td>NEG</td>
+<td>C</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-API-012</td>
+<td>Vendedor consulta estoque</td>
+<td>UC09</td>
+<td>POS</td>
+<td>C</td>
+<td>P2</td>
+</tr>
+</tbody></table>
+<h3>4.3 Produtos e estoque — <code>ProdutoIT</code>, <code>ProdutoTest</code></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Requisito</th>
+<th>Técnica</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-PROD-001</td>
+<td>Cadastro persiste e é consultável (inclui CT-DB-001)</td>
+<td>UC12</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-002</td>
+<td>Limites do preço (6 valores)</td>
+<td>UC12</td>
+<td>VL</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-003</td>
+<td>Limites do estoque (4 valores)</td>
+<td>UC12, VAL-01</td>
+<td>VL</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-004</td>
+<td>Nome nulo / vazio / espaços (3 valores)</td>
+<td>UC12</td>
+<td>EP/NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-005</td>
+<td>SKU duplicado → 409</td>
+<td>UC12</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-006</td>
+<td>PATCH parcial + auditoria do preço</td>
+<td>UC12, R1.2</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-007</td>
+<td>PUT substitui o recurso</td>
+<td>Contrato</td>
+<td>POS</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-PROD-008</td>
+<td>Ajuste de estoque auditado (anterior/novo)</td>
+<td>R1.2</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-009</td>
+<td>Soft delete preserva o registro</td>
+<td>UC12</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-010</td>
+<td>Filtro <code>estoque_critico</code></td>
+<td>UC09, VAL-04</td>
+<td>VL</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-011</td>
+<td>Paginação (25 itens, limite 10) e limite 101</td>
+<td>Contrato</td>
+<td>VL</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-012</td>
+<td>Busca por nome / SKU; &quot;%&quot; tratado como literal</td>
+<td>UC09</td>
+<td>POS/NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-PROD-013</td>
+<td>Produto inexistente → 404</td>
+<td>Contrato</td>
+<td>NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-PROD-U01</td>
+<td>Alerta crítico nos limites do mínimo (4 valores)</td>
+<td>VAL-04</td>
+<td>VL</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PROD-U02</td>
+<td>Baixa igual ao saldo zera o estoque</td>
+<td>VAL-01</td>
+<td>VL</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PROD-U03</td>
+<td>Baixa maior que o saldo é impedida</td>
+<td>VAL-01</td>
+<td>VL/NEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PROD-U04</td>
+<td>Estorno devolve ao estoque</td>
+<td>VAL-03</td>
+<td>POS</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PROD-U05</td>
+<td>NCM normalizado (3 formatos)</td>
+<td>UC12</td>
+<td>EP</td>
+<td>U</td>
+<td>P4</td>
+</tr>
+<tr>
+<td>CT-PROD-U06</td>
+<td>NCM 7/9 dígitos ou com letras é rejeitado</td>
+<td>UC12</td>
+<td>VL</td>
+<td>U</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-PROD-U07</td>
+<td>CEST 7 ✓ / 6 ✗ / vazio → nulo</td>
+<td>UC12</td>
+<td>VL</td>
+<td>U</td>
+<td>P3</td>
+</tr>
+</tbody></table>
+<h3>4.4 Clientes, usuários e cupons — <code>ClienteIT</code>, <code>UsuarioIT</code>, <code>InicializadorGerenteTest</code>, <code>CupomIT</code>, <code>CupomTest</code>, <code>DocumentosTest</code></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Requisito</th>
+<th>Técnica</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-CLI-001</td>
+<td>Vendedor cadastra PF com CPF mascarado</td>
+<td>UC08</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CLI-002</td>
+<td>PJ com CNPJ válido</td>
+<td>UC08</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CLI-003</td>
+<td>CPF inválido → 400, nada persiste</td>
+<td>UC08</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CLI-004</td>
+<td>PJ com CPF → 400</td>
+<td>UC08</td>
+<td>EP</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CLI-005</td>
+<td>Documento duplicado → 409</td>
+<td>UC08</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CLI-006</td>
+<td>Vários erros juntos em <code>invalid_params</code></td>
+<td>Contrato</td>
+<td>NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CLI-007</td>
+<td>Documento reservado 000… rejeitado</td>
+<td>UC08</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CLI-008</td>
+<td>Consumidor Padrão protegido (422)</td>
+<td>R1.1.1.9</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CLI-009</td>
+<td>PATCH pelo Vendedor, auditado</td>
+<td>UC08, R1.2</td>
+<td>POS</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CLI-010</td>
+<td>Exclusão: Vendedor 403, Gerente soft delete</td>
+<td>UC08, VAL-02</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CLI-011</td>
+<td>Consulta por CPF mascarado e por nome</td>
+<td>UC08</td>
+<td>POS</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CLI-012</td>
+<td>PATCH de tipo/documento: PF→PJ ✓; PJ com CPF → 400; documento de outro → 409</td>
+<td>UC08</td>
+<td>EP/NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CLI-013</td>
+<td>PUT substitui o cadastro (opcionais omitidos são apagados)</td>
+<td>UC08</td>
+<td>POS</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-USR-001</td>
+<td>Cadastro de vendedor sem expor senha/hash</td>
+<td>UC13</td>
+<td>POS/SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-USR-002</td>
+<td>Limites da comissão (4 valores)</td>
+<td>UC13</td>
+<td>VL</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-USR-003</td>
+<td>CPF inválido 400 / duplicado 409</td>
+<td>UC13</td>
+<td>NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-USR-004</td>
+<td>PATCH de comissão auditado</td>
+<td>UC13, R1.2</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-USR-005</td>
+<td>Gerente não se inativa nem se rebaixa</td>
+<td>UC13</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-USR-006</td>
+<td>Inativado some da lista e não loga</td>
+<td>UC13</td>
+<td>POS</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-USR-007</td>
+<td>PUT substitui nome, perfil e comissão; inexistente → 404</td>
+<td>UC13</td>
+<td>POS/NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-USR-U01 a U06</td>
+<td>Gerente inicial (<code>InicializadorGerente</code>): cria, não duplica, configuração incompleta, CPF inválido, reativa existente, senha de 8 caracteres</td>
+<td>Instalação</td>
+<td>EP/VL</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CUP-001 a 004</td>
+<td>Vigência: início −1 s ✗, início ✓, término ✓, término +1 s ✗</td>
+<td>UC06</td>
+<td>VL</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CUP-005</td>
+<td>Cupom inativo não é vigente</td>
+<td>UC06</td>
+<td>NEG</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CUP-006</td>
+<td>10% de R$ 250 = R$ 25</td>
+<td>UC06</td>
+<td>POS</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CUP-007</td>
+<td>Arredondamento do percentual</td>
+<td>UC06</td>
+<td>VL</td>
+<td>U</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CUP-008</td>
+<td>Valor fixo limitado ao subtotal</td>
+<td>UC06</td>
+<td>VL</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CUP-009</td>
+<td>Percentual 100 ✓ / 100,01 ✗</td>
+<td>UC14</td>
+<td>VL</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CUP-010</td>
+<td>Término = início ✗ / +1 s ✓</td>
+<td>UC14</td>
+<td>VL</td>
+<td>U</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CUP-011</td>
+<td>Emissão; código normalizado; vigente</td>
+<td>UC14</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CUP-012</td>
+<td>Percentual &gt; 100 e período invertido → 400</td>
+<td>UC14</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CUP-013</td>
+<td>Código duplicado → 409</td>
+<td>UC14</td>
+<td>NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CUP-014</td>
+<td>Filtro <code>vigente</code> (vigente, expirado, futuro, inativo)</td>
+<td>UC14</td>
+<td>EP</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CUP-015</td>
+<td>Vendedor lê mas não altera (403)</td>
+<td>VAL-02</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CUP-016</td>
+<td>PATCH prorroga validade (exemplo do contrato)</td>
+<td>UC14</td>
+<td>POS</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CUP-017</td>
+<td>PUT substitui; inativo/inexistente → 404; código já usado → 409</td>
+<td>UC14</td>
+<td>NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-DOC-001 a 012</td>
+<td>CPF/CNPJ: válidos com e sem máscara, DV errado, repetidos, tamanho, nulo/letras, tipos trocados, resto 2 → DV 9</td>
+<td>UC08, UC13</td>
+<td>EP/VL</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+</tbody></table>
+<h3>4.5 Caixa — <code>CaixaIT</code>, <code>CaixaServiceTest</code>, <code>EstadosTest</code></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Requisito</th>
+<th>Técnica</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-CX-001</td>
+<td>Abertura → 201 ABERTO</td>
+<td>UC02</td>
+<td>POS</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-002</td>
+<td>Abertura duplicada → 409</td>
+<td>VAL-05</td>
+<td>ES</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-003</td>
+<td>Suprimento −0,01 ✗ / 0 ✓</td>
+<td>UC02</td>
+<td>VL</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CX-004</td>
+<td>Saldo parcial do exemplo do contrato (R$ 300)</td>
+<td>UC15, API 3.5</td>
+<td>POS</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-005</td>
+<td>PIX/cartão fora do saldo em dinheiro</td>
+<td>UC03</td>
+<td>EP</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CX-006</td>
+<td>Sangria acima do saldo → 422</td>
+<td>UC15, VAL-05</td>
+<td>VL</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-007</td>
+<td>Sangria sem justificativa → 400</td>
+<td>UC15</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CX-008</td>
+<td>Suprimento aumenta o saldo</td>
+<td>UC15</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CX-009</td>
+<td>Fechamento com diferença (−R$ 5,00)</td>
+<td>UC03</td>
+<td>POS</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-010</td>
+<td>Caixa FECHADO bloqueia operações</td>
+<td>VAL-05</td>
+<td>ES</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-011</td>
+<td>Vendedor não fecha caixa alheio; Gerente fecha</td>
+<td>VAL-02</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CX-012</td>
+<td>Novo turno após o fechamento</td>
+<td>UC02</td>
+<td>ES</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CX-U01</td>
+<td>Diferença: sobra, falta, zero (3 valores)</td>
+<td>UC03</td>
+<td>EP</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-U02</td>
+<td>FECHADO não fecha de novo</td>
+<td>UC03</td>
+<td>ES</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-U10</td>
+<td>Abertura duplicada não grava</td>
+<td>VAL-05</td>
+<td>NEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-U11</td>
+<td>Sangria = saldo ✓ / +0,01 ✗ e auditada</td>
+<td>UC15</td>
+<td>VL</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-U12</td>
+<td>Caixa de outro operador → 403</td>
+<td>VAL-05</td>
+<td>SEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-U13</td>
+<td>Caixa fechado → 422</td>
+<td>VAL-05</td>
+<td>ES</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-U14</td>
+<td>Fechamento: cálculo do esperado, diferença e auditoria</td>
+<td>UC03</td>
+<td>POS</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CX-U15</td>
+<td>Suprimento soma ao saldo e é auditado (anterior/novo)</td>
+<td>UC15</td>
+<td>POS</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CX-U16</td>
+<td>Fechamento de caixa alheio: vendedor 403 (caixa segue aberto), gerente fecha</td>
+<td>VAL-02</td>
+<td>SEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+</tbody></table>
+<h3>4.6 Vendas, cancelamento e comissões — <code>VendaIT</code>, <code>CancelamentoEConsultaIT</code>, <code>VendaServiceTest</code>, <code>CalculadoraVendaTest</code>, <code>EstadosTest</code></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Requisito</th>
+<th>Técnica</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-VEN-001</td>
+<td>Camiseta P: 10 − 2 = 8</td>
+<td>VAL-01, Regras §3</td>
+<td>VL/POS</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-002</td>
+<td>Tênis 41: bloqueio por saldo insuficiente</td>
+<td>VAL-01, Regras §3</td>
+<td>VL/NEG</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-003</td>
+<td>Meia: venda com alerta crítico</td>
+<td>VAL-04, Regras §3</td>
+<td>VL</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-004</td>
+<td>Exemplo do contrato: R$ 215 e comissão R$ 10,75</td>
+<td>UC04/06/07/10</td>
+<td>TD</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-005</td>
+<td>Sem cliente → Consumidor Padrão</td>
+<td>R1.1.1.9</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-VEN-006</td>
+<td>Desconto direto sem senha → 403</td>
+<td>UC07</td>
+<td>TD</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-007</td>
+<td>Senha incorreta → 403</td>
+<td>UC07</td>
+<td>TD</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-008</td>
+<td>Gerente com desconto direto sem senha</td>
+<td>UC07</td>
+<td>TD</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-009</td>
+<td>Desconto &gt; restante → 422</td>
+<td>UC07</td>
+<td>VL</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-010</td>
+<td>Cupom expirado / futuro / inexistente → 422</td>
+<td>UC06</td>
+<td>EP</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-011</td>
+<td>Cupom de valor fixo pelo Vendedor</td>
+<td>UC06</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-VEN-012</td>
+<td>Preço adulterado ignorado</td>
+<td>ADR D-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-013</td>
+<td>Um item sem saldo bloqueia a venda inteira</td>
+<td>VAL-01</td>
+<td>NEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-014</td>
+<td>Itens repetidos somados (2 + 2 &gt; 3)</td>
+<td>VAL-01</td>
+<td>VL</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-015</td>
+<td>Zerar o estoque exatamente</td>
+<td>VAL-01</td>
+<td>VL</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-016</td>
+<td>Validação de entrada (itens, quantidade, modalidade, caixa)</td>
+<td>UC04</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-VEN-017</td>
+<td>Sem caixa aberto / caixa alheio</td>
+<td>VAL-05</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-018</td>
+<td>Produto inativo / inexistente → 404</td>
+<td>UC12</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-VEN-019</td>
+<td>PUT/PATCH/DELETE de venda → 405</td>
+<td>API §2</td>
+<td>ES</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-VEN-020</td>
+<td>VENDA_REGISTRO auditado com o operador</td>
+<td>R1.2</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-VEN-U01 a U03</td>
+<td>Transições de estado da venda e subtotal do item</td>
+<td>UC11</td>
+<td>ES/VL</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-U10 a U19</td>
+<td>Serviço de venda com Mockito: sem gravação em falhas, autorização, preço de catálogo, agrupamento, efeitos da venda concluída</td>
+<td>UC04–UC07</td>
+<td>NEG/POS</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-U20 a U23</td>
+<td>Cancelamento com estorno, cancelamento duplo, comissão de outro vendedor (403), consolidado do gerente</td>
+<td>UC10, UC11</td>
+<td>ES/SEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-U24</td>
+<td>Senha do gerente: bloqueio → 429 sem conferir senhas; erro conta falha e audita</td>
+<td>UC07, VAL-06</td>
+<td>SEG</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-VEN-U25</td>
+<td>Comissões: período invertido → 400; datas viram limites do dia no fuso da loja</td>
+<td>UC10</td>
+<td>VL</td>
+<td>U</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CALC-001 a 008</td>
+<td>Tabela de decisão, limites do desconto, arredondamento e extremos da comissão</td>
+<td>UC06/07/10</td>
+<td>TD/VL</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CALC-009</td>
+<td>Base da comissão: LIQUIDO R$ 10,75 × BRUTO R$ 12,50</td>
+<td>UC10, ADR D-04</td>
+<td>EP</td>
+<td>U</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CAN-001</td>
+<td>Vendedor tenta cancelar → 403</td>
+<td>VAL-02, Regras §3</td>
+<td>SEG</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CAN-002</td>
+<td>Gerente cancela com estorno e LOG</td>
+<td>VAL-03</td>
+<td>POS</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CAN-003</td>
+<td>Cancelar duas vezes → 422 sem estorno duplo</td>
+<td>VAL-03</td>
+<td>ES</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CAN-004</td>
+<td>Motivo obrigatório (mínimo 5 caracteres)</td>
+<td>UC11</td>
+<td>VL</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-CAN-005</td>
+<td>Cancelada sai dos totais de caixa e comissão</td>
+<td>VAL-03</td>
+<td>POS</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CAN-006</td>
+<td>Venda inexistente → 404</td>
+<td>UC11</td>
+<td>NEG</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-HIS-001</td>
+<td>Histórico por perfil e filtro <code>usuario_id</code></td>
+<td>UC10, VAL-02</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-HIS-002</td>
+<td>IDOR no detalhe da venda</td>
+<td>VAL-02</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-HIS-003</td>
+<td>Filtro de período (inválido / vazio / formato)</td>
+<td>Contrato</td>
+<td>VL</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-COM-001</td>
+<td>Exemplo do contrato: 15 vendas → R$ 225,00</td>
+<td>UC10</td>
+<td>POS</td>
+<td>S</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-COM-002</td>
+<td>Vendedor não vê a comissão de outro; Gerente vê o consolidado</td>
+<td>UC10, VAL-02</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-COM-003</td>
+<td>Percentual congelado na venda</td>
+<td>UC10</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-COM-004</td>
+<td>Com <code>PDV_COMISSAO_BASE=BRUTO</code>: 5% de R$ 250,00 = R$ 12,50</td>
+<td>UC10, ADR D-04</td>
+<td>EP</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+</tbody></table>
+<h3>4.7 Auditoria, banco, concorrência, desempenho e paginação</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Requisito</th>
+<th>Técnica</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-AUD-001</td>
+<td>Cada ação sensível da Regra 1.2 gera 1 log</td>
+<td>R1.2</td>
+<td>POS</td>
+<td>S</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-AUD-002</td>
+<td>Consulta filtrada por <code>tipo_acao</code></td>
+<td>UC16</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-AUD-003</td>
+<td>Tipo de ação inválido → 400</td>
+<td>UC16</td>
+<td>NEG</td>
+<td>I</td>
+<td>P4</td>
+</tr>
+<tr>
+<td>CT-AUD-004</td>
+<td>Operação que falha não deixa log</td>
+<td>R1.2</td>
+<td>EXC</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-AUD-005</td>
+<td>Filtro por período (hoje, passado vazio, invertido → 400)</td>
+<td>UC16</td>
+<td>VL</td>
+<td>I</td>
+<td>P3</td>
+</tr>
+<tr>
+<td>CT-DB-002</td>
+<td>CHECK impede estoque negativo</td>
+<td>VAL-01</td>
+<td>NEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-DB-003</td>
+<td>Índice único: um caixa aberto por operador</td>
+<td>VAL-05</td>
+<td>NEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-DB-004</td>
+<td>CHECK do total da venda</td>
+<td>Integridade</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-DB-005</td>
+<td>Documento × tipo e unicidade no banco</td>
+<td>UC08</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-DB-006</td>
+<td>Migrações Flyway V1 a V4</td>
+<td>Infra</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-DB-007</td>
+<td>Log de auditoria imutável (UPDATE/DELETE rejeitados no banco)</td>
+<td>R1.2</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-DB-008</td>
+<td>Venda: valores imutáveis, não apagável, cancelada não volta</td>
+<td>VAL-03, API §2</td>
+<td>ES/SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-DB-009</td>
+<td>CHECK: cancelamento completo e subtotal do item = quantidade × preço</td>
+<td>R1.2, UC11</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-DB-010</td>
+<td>Caixa: fechar exige data; fechado não reabre nem é apagado</td>
+<td>VAL-05</td>
+<td>ES</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-DB-011</td>
+<td>Papéis do Docker: Flyway como dono, API sobe como <code>pdv_app</code> e cria o gerente</td>
+<td>Infra, VAL-06</td>
+<td>POS</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-DB-012</td>
+<td><code>pdv_app</code> não cria, apaga, esvazia tabelas nem desliga gatilhos</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-DB-013</td>
+<td>Usuário sem papel do sistema não conecta ao banco</td>
+<td>VAL-06</td>
+<td>SEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-CONC-001</td>
+<td>20 vendas simultâneas, estoque 5 (repetido 10 vezes)</td>
+<td>VAL-01, risco 1.9</td>
+<td>CONC</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CONC-002</td>
+<td>Cancelamento duplo simultâneo</td>
+<td>VAL-03</td>
+<td>CONC</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CONC-003</td>
+<td>Sangrias simultâneas</td>
+<td>VAL-05</td>
+<td>CONC</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CONC-004</td>
+<td>Aberturas simultâneas</td>
+<td>VAL-05</td>
+<td>CONC</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PERF-001</td>
+<td>Listagem paginada (1.000 itens) &lt; 3 s</td>
+<td>VAL-07</td>
+<td>DES</td>
+<td>S</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PERF-002</td>
+<td>Busca por nome &lt; 3 s</td>
+<td>VAL-07</td>
+<td>DES</td>
+<td>S</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PERF-003</td>
+<td>Venda com 10 itens &lt; 3 s</td>
+<td>VAL-07</td>
+<td>DES</td>
+<td>S</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PERF-004</td>
+<td>Consulta de um produto &lt; 3 s</td>
+<td>VAL-07</td>
+<td>DES</td>
+<td>S</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PERF-005</td>
+<td>Carga local: 20 operadores simultâneos, primeira rajada + 400 requisições em regime, todas &lt; 3 s, 0 erros</td>
+<td>VAL-07</td>
+<td>DES/CONC</td>
+<td>S</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAG-001 a 005</td>
+<td>Padrões, limites de <code>pagina</code>/<code>limite</code>, snake_case nos erros</td>
+<td>Contrato</td>
+<td>VL</td>
+<td>U</td>
+<td>P3</td>
+</tr>
+</tbody></table>
+<h3>4.8 Cenários BDD — ver <a href="03-cenarios-bdd.pdf">03-cenarios-bdd.md</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Cenário</th>
+<th>Requisito</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BDD-EST-01</td>
+<td>Venda conforme o saldo (Camiseta, Tênis 41, Meia)</td>
+<td>VAL-01, VAL-04</td>
+<td>A</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>BDD-EST-02</td>
+<td>Mensagem de saldo insuficiente</td>
+<td>VAL-01</td>
+<td>A</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>BDD-CAN-01 a 03</td>
+<td>Cancelamento por perfil, estorno, cancelamento duplo</td>
+<td>VAL-02, VAL-03</td>
+<td>A</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>BDD-DES R1 a R8</td>
+<td>Tabela de decisão de descontos</td>
+<td>UC06, UC07</td>
+<td>A</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>BDD-CX-01 a 03</td>
+<td>Caixa aberto, caixa fechado, sangria acima do saldo</td>
+<td>VAL-05</td>
+<td>A</td>
+<td>P1</td>
+</tr>
+</tbody></table>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script><script>mermaid.initialize({ startOnLoad: true, theme: "neutral" });</script></body></html>

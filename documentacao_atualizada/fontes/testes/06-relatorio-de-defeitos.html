@@ -1,0 +1,769 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Defeitos</title>
+<link rel="stylesheet" href="../estilo.css"></head><body>
+<div class="doc-cabecalho"><div class="projeto">PDV Web · Documentação de Testes</div><div class="titulo">Relatório de Defeitos</div></div>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Identificador</td>
+<td>RDF-PDV-001 · versão 1.2 · 28/10/2026 (Ciclo 1.2 — banco de dados e Docker)</td>
+</tr>
+<tr>
+<td>Escopo</td>
+<td>Defeitos do backend <code>pdv-web-api</code> encontrados pelos testes, defeitos do sistema desktop legado e inconsistências da documentação</td>
+</tr>
+<tr>
+<td>Severidade / prioridade</td>
+<td>Definições no <a href="01-plano-de-testes.pdf">Plano de Testes, seção 12</a></td>
+</tr>
+</tbody></table>
+<h2>1. Resumo</h2>
+<table>
+<thead>
+<tr>
+<th>Origem</th>
+<th>Encontrados</th>
+<th>Corrigidos e retestados</th>
+<th>Corrigidos, reteste pendente</th>
+<th>Abertos (aceitos/adiados)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Backend <code>pdv-web-api</code> — produto</td>
+<td>9</td>
+<td>9</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Backend <code>pdv-web-api</code> — script de teste</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Desktop <code>SistemaVendasEmpresa</code></td>
+<td>9</td>
+<td>0</td>
+<td>7</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Documentação do projeto</td>
+<td>5</td>
+<td>—</td>
+<td>—</td>
+<td>4 resolvidos por decisão (ADR-001; DOC-04 virou configuração) · 1 a corrigir no documento</td>
+</tr>
+<tr>
+<td><strong>Total de defeitos de software</strong></td>
+<td><strong>19</strong></td>
+<td><strong>10</strong></td>
+<td><strong>7</strong></td>
+<td><strong>2</strong></td>
+</tr>
+</tbody></table>
+<p>Por severidade (somente defeitos de software): Crítica 1 · Alta 3 · Média 10 · Baixa 5.
+<strong>Defeitos Críticos ou Altos abertos no backend: 0</strong> (critério CS-3 atendido).</p>
+<hr>
+<h2>2. Defeitos do backend <code>pdv-web-api</code></h2>
+<h3>DEF-WEB-001 — Vendedor recebe 400 em vez de 403 em operações exclusivas do Gerente</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td>Média / P1 (segurança — exposição de informação)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong> (corrigido, retestado, regressão aprovada)</td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td><code>seguranca/ConfiguracaoSeguranca</code></td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>CT-SEG-005 (matriz RBAC) — 5 de 9 operações falharam na primeira execução</td>
+</tr>
+<tr>
+<td>Passos para reproduzir</td>
+<td>1. Autenticar como Vendedor. 2. <code>POST /produtos</code> com corpo <code>{}</code>.</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td><code>403 acesso-negado</code>, sem processar o corpo</td>
+</tr>
+<tr>
+<td>Resultado obtido</td>
+<td><code>400 validacao</code> listando os campos obrigatórios (<code>nome</code>, <code>preco_venda</code>, …)</td>
+</tr>
+<tr>
+<td>Causa raiz</td>
+<td>A autorização ficava só no <code>@PreAuthorize</code> do controller, avaliado <strong>depois</strong> da leitura e validação (<code>@Valid</code>) do corpo. Um usuário sem permissão conseguia mapear as regras de validação de operações às quais não tem acesso.</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td>Autorização por rota no <code>SecurityFilterChain</code>, aplicada antes do processamento MVC. O <code>@PreAuthorize</code> permanece como segunda camada.</td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>CT-SEG-005 9/9 · <code>SegurancaIT</code> 16/16 · <code>ProdutoControllerWebTest</code> 12/12 · regressão final 264/264</td>
+</tr>
+</tbody></table>
+<h3>DEF-WEB-002 — Gerente rebaixado mantinha os privilégios de gerente até o token expirar</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td><strong>Alta</strong> / P1 (segurança — retenção de privilégio por até 24 h)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong> (corrigido, retestado, regressão aprovada)</td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td><code>seguranca/ConfiguracaoSeguranca</code>, <code>usuario/UsuarioRepository</code></td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>Análise de risco ao escrever a sessão exploratória EXP-02 (&quot;o perfil fica no token até expirar?&quot;). A hipótese foi transformada no caso automatizado CT-SEG-009, que <strong>falhou</strong> na primeira execução.</td>
+</tr>
+<tr>
+<td>Passos para reproduzir</td>
+<td>1. Promover um vendedor a GERENTE. 2. Ele faz login (token com <code>perfil = GERENTE</code>). 3. Outro gerente o rebaixa a VENDEDOR. 4. Com o token antigo, <code>GET /usuarios</code>.</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>401 (token invalidado pela mudança de perfil)</td>
+</tr>
+<tr>
+<td>Resultado obtido</td>
+<td><strong>200</strong> — o usuário rebaixado continuava listando funcionários e poderia cancelar vendas, dar descontos e fazer sangrias por até 24 h</td>
+</tr>
+<tr>
+<td>Causa raiz</td>
+<td>O perfil é gravado como claim no JWT e usado para a autorização; o validador conferia só se o usuário estava ativo, não se o perfil ainda era o mesmo.</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td>O validador do JWT passou a exigir usuário ativo <strong>e</strong> perfil igual ao da emissão (<code>existsByIdAndAtivoTrueAndPerfil</code>). Qualquer mudança de perfil invalida os tokens anteriores; o usuário faz login de novo e recebe o perfil atualizado.</td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>CT-SEG-009 aprovado · <code>SegurancaIT</code> 17/17 · <code>AutenticacaoIT</code> 9/9 · <code>UsuarioIT</code> 9/9 · regressão final 265/265</td>
+</tr>
+</tbody></table>
+<h3>Defeitos do Ciclo 1.1 (robustez) — 28/10/2026</h3>
+<p>Os quatro defeitos abaixo vieram dos <strong>riscos residuais</strong> do Ciclo 1 (<a href="05-relatorio-de-execucao.pdf">Relatório de Execução, seção 7</a>)
+e do novo teste de carga CT-PERF-005. Cada um ganhou casos automatizados que falhariam sem a correção.</p>
+<h4>DEF-WEB-003 — Logout e renovação de token se perdiam ao reiniciar a API</h4>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td>Média / P1 (segurança — sessão encerrada volta a valer)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong> (corrigido, retestado, regressão aprovada)</td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td><code>seguranca/RevogacaoDeTokens</code></td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>Análise de risco do Ciclo 1 (revogação mantida em memória)</td>
+</tr>
+<tr>
+<td>Passos para reproduzir</td>
+<td>1. Login. 2. Logout. 3. Reiniciar a API (ou atender a requisição por outra instância). 4. Usar o token antigo.</td>
+</tr>
+<tr>
+<td>Resultado esperado</td>
+<td>401</td>
+</tr>
+<tr>
+<td>Resultado obtido</td>
+<td>200 até o token expirar (24 h): a lista de tokens revogados ficava num <code>Map</code> em memória</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td>Tabela <code>tokens_revogados</code> (migração V3), gravada no logout e na renovação; limpeza agendada dos registros já expirados</td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>CT-SEG-011 (outra instância da API com o mesmo banco recusa o token), CT-SEG-012 (limpeza), CT-AUTH-005/006 · regressão 313/313</td>
+</tr>
+</tbody></table>
+<h4>DEF-WEB-004 — Login sem limite de tentativas (força bruta)</h4>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td>Média / P1 (segurança)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong></td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td><code>auth/AuthService</code>, <code>seguranca/LimitadorDeTentativas</code></td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>Análise de risco do Ciclo 1 (PEND-08)</td>
+</tr>
+<tr>
+<td>Resultado obtido</td>
+<td>Tentativas ilimitadas de senha por CPF e por IP</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td>Contagem de falhas no banco (tabela <code>tentativas_acesso</code>, atualização atômica): 5 falhas por CPF ou 20 por IP em 15 min bloqueiam por 15 min, com <strong>429 + <code>Retry-After</code></strong>. CPF inexistente é bloqueado da mesma forma (não revela se existe). Bloqueios são auditados (<code>ACESSO_BLOQUEADO</code>). Limites configuráveis em <code>pdv.seguranca.tentativas</code></td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>CT-SEG-013 a 016, CT-SEG-019 (10 tentativas simultâneas não escapam do limite), CT-AUTH-U05/U06; smoke em servidor real (passo 12)</td>
+</tr>
+</tbody></table>
+<h4>DEF-WEB-005 — Senha do gerente podia ser adivinhada pela tela de venda</h4>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td><strong>Alta</strong> / P1 (segurança — um vendedor obteria a senha de um gerente)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong></td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td><code>venda/VendaService.autorizarDescontoDireto</code></td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>Revisão de segurança feita junto com a DEF-WEB-004: o campo <code>senha_autorizacao_gerente</code> de <code>POST /vendas</code> também confere senha</td>
+</tr>
+<tr>
+<td>Resultado obtido</td>
+<td>Um vendedor podia testar senhas sem limite enviando vendas com desconto; a falha nem era auditada</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td>Mesmo limitador, por vendedor (5 falhas → 429 por 15 min); cada erro é auditado como <code>AUTORIZACAO_FALHA</code></td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>CT-SEG-017, CT-VEN-U24</td>
+</tr>
+</tbody></table>
+<h4>DEF-WEB-006 — Primeira rajada após a subida passava de 3 s (VAL-07)</h4>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td>Média / P2 (desempenho)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong></td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td>Inicialização da aplicação</td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>CT-PERF-005 (novo): 20 operadores simultâneos logo após a subida</td>
+</tr>
+<tr>
+<td>Resultado obtido</td>
+<td>Pior requisição entre <strong>2,8 s e 4,0 s</strong> em 3 execuções; todas as lentas no primeiro ciclo</td>
+</tr>
+<tr>
+<td>Causa raiz</td>
+<td>Partida a frio: o pool de conexões abria as conexões sob demanda e o código ainda não estava compilado pelo JIT</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td><code>AquecimentoNaInicializacao</code>: antes de a prontidão (<code>/actuator/health/readiness</code>) aceitar tráfego, abre as conexões em paralelo e executa as consultas mais usadas</td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>3 execuções isoladas: máx. 732 / 744 / 1.115 ms na primeira rajada. Regressão oficial: máx. <strong>284 ms</strong> (primeira rajada) e <strong>981 ms</strong> (regime, 400 requisições)</td>
+</tr>
+</tbody></table>
+<h3>Defeitos do Ciclo 1.2 (Docker) — 28/10/2026</h3>
+<p>DEF-WEB-007 e 008 foram encontrados na primeira execução do roteiro de implantação (RT-DEP) no Docker Desktop do
+Windows, com Git Bash; DEF-WEB-009, por inspeção ao preparar o proxy TLS.</p>
+<h4>DEF-WEB-007 — Restauração de backup falhava no Git Bash e deixava a API parada</h4>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td>Média / P1 (disponibilidade — recuperação de desastre)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong></td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td><code>scripts/restaurar-backup.sh</code></td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>RT-DEP-07</td>
+</tr>
+<tr>
+<td>Resultado obtido</td>
+<td><code>pg_restore: could not open input file &quot;C:/Program Files/Git/backups/…&quot;</code>; o banco ficou intacto (transação única), mas a API continuou parada</td>
+</tr>
+<tr>
+<td>Causa raiz</td>
+<td>O Git Bash converte argumentos que começam com <code>/</code> em caminhos do Windows antes de chamar o <code>docker</code>; e o script terminava no erro (<code>set -e</code>) antes do <code>docker compose start api</code></td>
+</tr>
+<tr>
+<td>Correção</td>
+<td><code>MSYS_NO_PATHCONV=1</code> no script e <code>trap</code> que religa a API ao sair, com ou sem erro</td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>RT-DEP-07 aprovado: vendas 2 → 1 e estoque 8 → 10 após restaurar; API UP e login OK</td>
+</tr>
+</tbody></table>
+<h4>DEF-WEB-008 — <code>subir-docker.sh</code> pedia senha e terminava com erro mesmo com o ambiente saudável</h4>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td>Baixa / P2 (falso alarme na implantação)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong></td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td><code>scripts/subir-docker.sh</code></td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>RT-DEP-01</td>
+</tr>
+<tr>
+<td>Resultado obtido</td>
+<td>Depois de &quot;Pronto&quot;, o <code>psql</code> pedia senha e falhava: <code>FATAL: password authentication failed for user &quot;pdv_admin&quot;</code></td>
+</tr>
+<tr>
+<td>Causa raiz</td>
+<td>O banco usa <code>--auth-local=scram-sha-256</code>, que exige senha até no socket local do container; o script não a informava</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td>A consulta roda com <code>PGPASSWORD</code> lido das variáveis do próprio container (nenhum segredo passa pela linha de comando do host)</td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>RT-DEP-01 aprovado: script termina com código 0 e lista V1–V4</td>
+</tr>
+</tbody></table>
+<h4>DEF-WEB-009 — Em modo produção (<code>PDV_EXIGIR_HTTPS=true</code>) o health check marcaria a API como &quot;unhealthy&quot;</h4>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td>Média / P1 (disponibilidade — o proxy depende de a API estar &quot;healthy&quot; para subir)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong></td>
+</tr>
+<tr>
+<td>Módulo</td>
+<td><code>docker-compose.yml</code> (health check do serviço <code>api</code>)</td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>Inspeção, ao preparar o proxy TLS para RT-DEP-05 (antes de qualquer execução em produção)</td>
+</tr>
+<tr>
+<td>Resultado esperado sem correção</td>
+<td>O health check chama <code>/actuator/health</code> por HTTP sem cabeçalho de proxy; com HTTPS obrigatório a API responde 302, a verificação de &quot;UP&quot; falha e o container fica &quot;unhealthy&quot;</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td>O health check envia <code>X-Forwarded-Proto: https</code> (127.0.0.1 é proxy confiável para o Tomcat). A porta 8080 passou a ser publicada só em 127.0.0.1</td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>RT-DEP-05: com <code>PDV_EXIGIR_HTTPS=true</code> a API fica &quot;healthy&quot; e o proxy sobe</td>
+</tr>
+</tbody></table>
+<h3>DEF-TST-001 — Cenários BDD de desconto liam &quot;10.00&quot; como 1000 (defeito no script de teste)</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Severidade / prioridade</td>
+<td>Baixa / P2 (não afeta o produto, mas causava falso negativo)</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><strong>Fechado</strong></td>
+</tr>
+<tr>
+<td>Encontrado por</td>
+<td>BDD-DES R5, R6 e R7 — 3 de 18 cenários falharam: esperado 201, obtido 422 <code>desconto-invalido</code></td>
+</tr>
+<tr>
+<td>Análise</td>
+<td>A API estava <strong>correta</strong>: recebeu desconto de R$ 1.000,00 e o rejeitou. O tipo <code>{bigdecimal}</code> do Cucumber usa o idioma da feature (<code># language: pt</code>), em que o ponto é separador de milhar.</td>
+</tr>
+<tr>
+<td>Correção</td>
+<td>O passo recebe o valor como texto (<code>{word}</code>) e converte com <code>new BigDecimal(...)</code> (<code>PassosPdv</code>).</td>
+</tr>
+<tr>
+<td>Reteste</td>
+<td>18/18 cenários, 130/130 passos</td>
+</tr>
+<tr>
+<td>Lição registrada</td>
+<td>Em features em português, valores decimais devem ser lidos como texto ou com vírgula.</td>
+</tr>
+</tbody></table>
+<h3>Incidente de ambiente INC-01 (não é defeito)</h3>
+<p>Na primeira execução do <code>ProdutoControllerWebTest</code>, os 12 casos deram <strong>erro</strong> (contexto não inicializou: faltava o bean
+<code>HttpSecurity</code>). No Spring Boot 4, o slice <code>@WebMvcTest</code> só configura a segurança com o módulo
+<code>spring-boot-starter-security-test</code>. A dependência foi ajustada no <code>pom.xml</code> e os 12 casos passaram. Nenhuma mudança no produto.</p>
+<hr>
+<h2>3. Defeitos do sistema desktop <code>SistemaVendasEmpresa</code> (legado)</h2>
+<p>Encontrados por revisão de código na análise inicial (teste estático). As correções foram aplicadas e o projeto
+<strong>compila</strong> (<code>mvnw clean compile</code>). O reteste funcional depende de PostgreSQL local e da interface gráfica e está
+roteirizado em <a href="07-roteiro-de-testes-manuais.pdf">07-roteiro-de-testes-manuais.md</a> (RT-DSK-01 a 07) — <strong>pendente de execução</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Defeito</th>
+<th>Sev.</th>
+<th>Prior.</th>
+<th>Causa raiz</th>
+<th>Correção</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DEF-DSK-001</td>
+<td><strong>Estoque pode ficar negativo:</strong> venda acima do saldo era gravada; duas vendas simultâneas podiam vender o mesmo saldo</td>
+<td>Crítica</td>
+<td>P1</td>
+<td><code>UPDATE produtos SET estoque = estoque - ?</code> sem condição; nenhuma validação no carrinho</td>
+<td><code>UPDATE … WHERE id = ? AND estoque &gt;= ?</code>, item a item, com rollback se 0 linhas forem afetadas (<code>VendaRepository</code>); validação de saldo ao adicionar no carrinho, somando o que já está nele (<code>VendaController</code>); <code>CHECK (estoque &gt;= 0)</code> no <code>schema.sql</code></td>
+<td>Corrigido — reteste RT-DSK-01/02 pendente</td>
+</tr>
+<tr>
+<td>DEF-DSK-002</td>
+<td>Telas de Clientes, Produtos e Vendedores não abrem fora do Windows ou empacotadas em JAR</td>
+<td>Alta</td>
+<td>P1</td>
+<td><code>MainController</code> carregava <code>telacliente.fxml</code>, mas o arquivo é <code>TelaCliente.fxml</code> (o classpath diferencia maiúsculas)</td>
+<td>Caminhos corrigidos e mensagem clara se o FXML não existir</td>
+<td>Corrigido — RT-DSK-03 pendente</td>
+</tr>
+<tr>
+<td>DEF-DSK-003</td>
+<td><code>buscarVendasPorVendedor()</code> sempre devolvia lista vazia</td>
+<td>Média</td>
+<td>P3</td>
+<td>Lia a coluna <code>comissao</code>, que não existe no SELECT; a <code>SQLException</code> era engolida</td>
+<td>Consulta passa a buscar <code>percentual_comissao</code></td>
+<td>Corrigido — RT-DSK-04 pendente</td>
+</tr>
+<tr>
+<td>DEF-DSK-004</td>
+<td>Edição de cliente apagava/ignorava bairro, estado, UF e CEP; a tela não tinha a opção de editar</td>
+<td>Média</td>
+<td>P2</td>
+<td><code>UPDATE</code> com só 6 dos 10 campos; sem handler de atualização</td>
+<td><code>UPDATE</code> completo; botão &quot;Atualizar&quot; e carga dos dados ao clicar na tabela</td>
+<td>Corrigido — RT-DSK-05 pendente</td>
+</tr>
+<tr>
+<td>DEF-DSK-005</td>
+<td><code>mvn javafx:run</code> (documentado) não funcionava</td>
+<td>Baixa</td>
+<td>P3</td>
+<td><code>pom.xml</code> sem o <code>javafx-maven-plugin</code></td>
+<td>Plugin adicionado; Maven Wrapper incluído</td>
+<td>Corrigido — RT-DSK-06 pendente</td>
+</tr>
+<tr>
+<td>DEF-DSK-006</td>
+<td>Não havia script do banco no repositório</td>
+<td>Média</td>
+<td>P2</td>
+<td>Esquema existia só na máquina do desenvolvedor</td>
+<td><code>database/schema.sql</code>, reconstruído a partir das consultas, com restrições (FK, UNIQUE, CHECK)</td>
+<td>Corrigido — RT-DSK-07 pendente</td>
+</tr>
+<tr>
+<td>DEF-DSK-007</td>
+<td>Valores monetários em <code>double</code> (erros de arredondamento)</td>
+<td>Média</td>
+<td>P3</td>
+<td>Modelos usam <code>double</code></td>
+<td><strong>Não corrigido no desktop</strong> (refatoração ampla em sistema legado); resolvido no backend web com <code>BigDecimal</code>/<code>NUMERIC(10,2)</code></td>
+<td>Aceito — adiado</td>
+</tr>
+<tr>
+<td>DEF-DSK-008</td>
+<td><code>ResultSet</code> não era fechado em <code>buscarPorDocumento</code> (vazamento de recurso)</td>
+<td>Baixa</td>
+<td>P4</td>
+<td>Sem try-with-resources</td>
+<td>try-with-resources</td>
+<td>Corrigido — coberto por RT-DSK-05</td>
+</tr>
+<tr>
+<td>DEF-DSK-009</td>
+<td>O validador aceita <code>00000000000</code> como CPF válido em qualquer cadastro</td>
+<td>Baixa</td>
+<td>P3</td>
+<td>Exceção criada para o Consumidor Padrão vale para todos</td>
+<td><strong>Mantido no desktop</strong> (a tela de vendas depende dele); no backend web o documento é reservado à migração e rejeitado pela API (CT-CLI-007, CT-DOC-005)</td>
+<td>Aceito — adiado</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>4. Inconsistências na documentação do projeto</h2>
+<p>Não são defeitos de software, mas provocariam defeitos se implementadas literalmente. Todas foram tratadas no <a href="../arquitetura/ADR-001-decisoes-pdv-web.pdf">ADR-001</a>.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Inconsistência</th>
+<th>Documentos</th>
+<th>Decisão</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DOC-01</td>
+<td>Script DDL em sintaxe MySQL; o projeto usa PostgreSQL</td>
+<td>Doc. do Projeto §5 × sistema atual</td>
+<td>PostgreSQL + Flyway (D-01)</td>
+<td>Resolvido</td>
+</tr>
+<tr>
+<td>DOC-02</td>
+<td>Estoque tripartido × <code>estoque_atual</code> único</td>
+<td>Doc. do Projeto §1 × API v2.3 / Dicionário</td>
+<td><code>estoque_atual</code> + <code>estoque_minimo</code>; reserva adiada (D-02)</td>
+<td>Resolvido (VAL-08 parcial)</td>
+</tr>
+<tr>
+<td>DOC-03</td>
+<td>Cronograma com datas de 2027 fora de ordem (&quot;01/10/2027&quot; antes de &quot;01/02/2027&quot;)</td>
+<td>Plano de Projeto §3.1</td>
+<td>Registrado para correção pela equipe (D-05)</td>
+<td>Aberto (documento)</td>
+</tr>
+<tr>
+<td>DOC-04</td>
+<td>Comissão &quot;sobre o valor bruto&quot; × exemplo do contrato calculado sobre o líquido (R$ 10,75 = 5% de R$ 215)</td>
+<td>Tabela de Regras 1.1.1.11 × API v2.3 §3.4</td>
+<td>Base configurável: <code>PDV_COMISSAO_BASE=LIQUIDO</code> (padrão, conforme o contrato) ou <code>BRUTO</code> (D-04). Testadas as duas (CT-CALC-009, CT-COM-004)</td>
+<td>Resolvido por configuração — a equipe escolhe o valor na implantação</td>
+</tr>
+<tr>
+<td>DOC-05</td>
+<td>Numeração das validações: a Tabela de Planejamento termina em VAL-07 e a Documentação do Projeto vai até VAL-08, com nomes diferentes</td>
+<td>Tabela de Planejamento × Doc. do Projeto</td>
+<td>Adotada a numeração da Documentação do Projeto (mais recente): VAL-07 = Desempenho, VAL-08 = Reserva de Estoque</td>
+<td>Resolvido</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>5. Lacunas de teste encontradas por teste de mutação</h2>
+<p>Não são defeitos do produto: são <strong>testes fracos</strong>, que passariam mesmo se o código estivesse errado. Encontradas pelo PIT
+na primeira rodada (14 mutantes sobreviventes) e eliminadas no mesmo ciclo.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Mutação que sobreviveu</th>
+<th>Risco</th>
+<th>Reforço aplicado</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>MUT-01</td>
+<td>Remover <code>produto.baixarEstoque(...)</code> e <code>venda.adicionarItem(...)</code> em <code>VendaService.registrar</code></td>
+<td>Venda concluída sem baixar o estoque passaria nos testes unitários</td>
+<td>CT-VEN-U19 verifica estoque, itens, resposta e auditoria</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-02</td>
+<td>Remover a auditoria <code>VENDA_REGISTRO</code></td>
+<td>Venda sem LOG (Regra 1.2)</td>
+<td>CT-VEN-U19</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-03</td>
+<td><code>resto &lt; 2</code> → <code>resto &lt;= 2</code> no cálculo do DV de CPF/CNPJ</td>
+<td>CPF/CNPJ com DV 9 rejeitado indevidamente</td>
+<td>CT-DOC-012 (resto 2 → DV 9)</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-04</td>
+<td>Remover a auditoria da sangria</td>
+<td>Sangria sem LOG</td>
+<td>CT-CX-U11 verifica o log com saldo anterior/novo</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-05</td>
+<td><code>length() &lt; 4</code> → <code>&lt;= 4</code> na máscara de CPF</td>
+<td>Máscara errada no limite</td>
+<td>CT-AUTH-U04 com exatamente 4 dígitos</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-06</td>
+<td><code>Produto.isAtivo()</code> sempre <code>true</code></td>
+<td>Produto inativo vendido</td>
+<td>CT-VEN-U16 isola o caso do inativo; CT-VEN-U18 o do inexistente</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-07</td>
+<td>Getters de <code>Venda</code> devolvendo <code>null</code> e <code>isCancelada()</code> sempre <code>true</code></td>
+<td>Resposta da venda incompleta</td>
+<td>CT-VEN-U19 verifica status, modalidade, data e <code>isCancelada</code></td>
+<td>Fechado</td>
+</tr>
+</tbody></table>
+<p>Resultado: força dos testes unitários de <strong>91,4% → 100%</strong> (detalhes no <a href="05-relatorio-de-execucao.pdf">Relatório de Execução, seção 5.3</a>).</p>
+<h3>5.1 Ciclo 1.1 — lacunas encontradas na rodada 4</h3>
+<p>As classes alteradas no Ciclo 1.1 (limite de tentativas, base da comissão) e a nova classe avaliada (<code>InicializadorGerente</code>)
+geraram <strong>13 mutantes sobreviventes</strong>. Todos foram eliminados com casos novos ou asserções mais fortes.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Mutação que sobreviveu</th>
+<th>Risco</th>
+<th>Reforço aplicado</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>MUT-08</td>
+<td>Remover <code>limitador.verificar(...)</code> do login e do desconto, e <code>limitador.limpar(...)</code> após o acerto</td>
+<td>Bloqueio por excesso de tentativas sem efeito</td>
+<td>CT-AUTH-U05, CT-VEN-U24; CT-VEN-U13 passa a verificar a limpeza</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-09</td>
+<td>Inverter <code>bloqueouCpf || bloqueouIp</code> e a escolha CPF/IP na mensagem</td>
+<td>Bloqueio não auditado ou auditado com o alvo errado</td>
+<td>CT-AUTH-U06 (tabela de decisão com 4 combinações)</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-10</td>
+<td>Remover <code>verificarAcesso</code> do fechamento de caixa e inverter a condição de gerente</td>
+<td>Vendedor fecharia o caixa de outro</td>
+<td>CT-CX-U16</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-11</td>
+<td>Remover a validação de período das comissões, inverter os limites de data e devolver <code>null</code></td>
+<td>Comissão calculada no período errado</td>
+<td>CT-VEN-U25</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-12</td>
+<td>Texto do estorno vazio no log de cancelamento</td>
+<td>LOG sem os itens estornados (Regra 1.2)</td>
+<td>CT-VEN-U20 verifica o texto do estorno</td>
+<td>Fechado</td>
+</tr>
+<tr>
+<td>MUT-13</td>
+<td><code>senha.length() &lt; 8</code> → <code>&lt;= 8</code> no gerente inicial</td>
+<td>Senha de 8 caracteres recusada na instalação</td>
+<td>CT-USR-U06 (valor-limite)</td>
+<td>Fechado</td>
+</tr>
+</tbody></table>
+<p>Resultado: força <strong>93,8% → 99,1% → 100%</strong> em 12 classes (detalhes no <a href="05-relatorio-de-execucao.pdf">Relatório de Execução, seção 11</a>).</p>
+</body></html>

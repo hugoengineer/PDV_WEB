@@ -1,0 +1,14 @@
+{
+  "name": "pdv-web-documentacao",
+  "private": true,
+  "type": "module",
+  "description": "Gera os PDFs da documentação atualizada do PDV Web",
+  "scripts": {
+    "gerar": "node gerar-pdfs.mjs"
+  },
+  "dependencies": {
+    "marked": "15.0.6",
+    "pdfjs-dist": "4.10.38",
+    "puppeteer-core": "23.11.1"
+  }
+}

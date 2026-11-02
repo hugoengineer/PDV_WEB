@@ -1,0 +1,439 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Matriz de Rastreabilidade</title>
+<link rel="stylesheet" href="../estilo.css"></head><body>
+<div class="doc-cabecalho"><div class="projeto">PDV Web · Documentação de Testes</div><div class="titulo">Matriz de Rastreabilidade</div></div>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Identificador</td>
+<td>MRT-PDV-001 · versão 1.0 · 26/10/2026</td>
+</tr>
+<tr>
+<td>Base</td>
+<td>Execução oficial do Ciclo 1.2 — 28/10/2026 11:49 (320 execuções, 0 falhas). Ciclo 1.1: 11:09 (313). Ciclo 1: 26/10/2026 15:31 (265 execuções)</td>
+</tr>
+</tbody></table>
+<p>Legenda de cobertura:</p>
+<ul>
+<li>✅ <strong>Coberto</strong> — todas as regras do requisito verificadas por testes aprovados.</li>
+<li>🟡 <strong>Parcial</strong> — testes aprovados cobrem o que foi implementado, mas parte do requisito depende de item fora do escopo do ciclo.</li>
+<li>❌ <strong>Não coberto</strong> — nenhum teste executado.</li>
+</ul>
+<h2>1. Casos de uso</h2>
+<table>
+<thead>
+<tr>
+<th>Req.</th>
+<th>Descrição</th>
+<th>Casos de teste</th>
+<th>Resultado</th>
+<th>Cobertura</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>UC01</td>
+<td>Autenticar no sistema</td>
+<td>CT-AUTH-001 a 009, CT-AUTH-U01 a U06, CT-SEG-001 a 004, CT-SEG-010, 011, 013 a 016, 019, CT-SMK-002</td>
+<td>27/27 aprovados</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC02</td>
+<td>Abertura de caixa</td>
+<td>CT-CX-001 a 003, CT-CX-012, CT-CX-U10, CT-CONC-004, CT-DB-003, BDD-CX-01</td>
+<td>8/8</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC03</td>
+<td>Fechamento de caixa</td>
+<td>CT-CX-009 a 011, CT-CX-U01, CT-CX-U02, CT-CX-U14, CT-CX-U16</td>
+<td>7/7</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC04</td>
+<td>Registrar venda</td>
+<td>CT-VEN-001 a 020, CT-VEN-U10 a U19, BDD-EST-01/02</td>
+<td>32/32</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC05</td>
+<td>Validar estoque (automático)</td>
+<td>CT-VEN-002, 013, 014, 015, CT-VEN-U10, U15, CT-PROD-U02/U03, CT-CONC-001, CT-DB-002, BDD-EST-01/02</td>
+<td>12/12</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC06</td>
+<td>Aplicar cupom</td>
+<td>CT-CUP-001 a 008, CT-VEN-004, 010, 011, CT-CALC-001, 005, BDD-DES R2/R6/R7</td>
+<td>16/16</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC07</td>
+<td>Desconto direto do gerente</td>
+<td>CT-VEN-004, 006 a 009, CT-VEN-U12, U13, U24, CT-SEG-017, CT-CALC-001 a 004, BDD-DES R3 a R8</td>
+<td>19/19</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC08</td>
+<td>Cadastrar/gerenciar cliente</td>
+<td>CT-CLI-001 a 013, CT-DOC-001 a 012, CT-DB-005</td>
+<td>26/26</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC09</td>
+<td>Consultar estoque e alertas</td>
+<td>CT-PROD-010, 012, CT-API-012, CT-PERF-001/002/004</td>
+<td>6/6</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC10</td>
+<td>Relatório de comissões</td>
+<td>CT-COM-001 a 004, CT-CALC-006/007, 009, CT-VEN-U22, U23, U25, CT-CAN-005, CT-HIS-001</td>
+<td>12/12</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC11</td>
+<td>Cancelar venda</td>
+<td>CT-CAN-001 a 006, CT-VEN-U01/U02, U20, U21, CT-CONC-002, BDD-CAN-01 a 03</td>
+<td>14/14</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC12</td>
+<td>Gerenciar catálogo</td>
+<td>CT-PROD-001 a 013, CT-PROD-U05 a U07, CT-API-001 a 011</td>
+<td>27/27</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC13</td>
+<td>Gerenciar funcionários</td>
+<td>CT-USR-001 a 007, CT-USR-U01 a U06, CT-SEG-004, CT-SEG-009, CT-AUTH-U03</td>
+<td>16/16</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC14</td>
+<td>Emitir/gerenciar cupons</td>
+<td>CT-CUP-009 a 017</td>
+<td>9/9</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC15</td>
+<td>Sangria / suprimento</td>
+<td>CT-CX-004, 006 a 008, CT-CX-U11, U15, CT-CONC-003, BDD-CX-03</td>
+<td>8/8</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>UC16</td>
+<td>Consultar logs de auditoria</td>
+<td>CT-AUD-002, 003, 005, CT-SEG-005</td>
+<td>4/4</td>
+<td>✅</td>
+</tr>
+</tbody></table>
+<h2>2. Validações de sistema (Documentação do Projeto, seção 2.2)</h2>
+<table>
+<thead>
+<tr>
+<th>Req.</th>
+<th>Descrição</th>
+<th>Casos de teste</th>
+<th>Resultado</th>
+<th>Cobertura</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>VAL-01</td>
+<td>Bloqueio de saldo insuficiente</td>
+<td>CT-VEN-002, 013, 014, 015, CT-PROD-003, U02, U03, CT-VEN-U10, U15, CT-CONC-001, CT-DB-002, BDD-EST-01/02</td>
+<td>13/13</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>VAL-02</td>
+<td>Controle de perfil e acesso</td>
+<td>CT-SEG-005, 006, CT-API-007, CT-CAN-001, CT-CUP-015, CT-CLI-010, CT-CX-011, CT-HIS-001/002, CT-COM-002, CT-SEG-009, BDD-CAN-01</td>
+<td>12/12</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>VAL-03</td>
+<td>Estorno e devolução de estoque</td>
+<td>CT-CAN-002, 003, 005, CT-PROD-U04, CT-CONC-002, BDD-CAN-02/03</td>
+<td>7/7</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>VAL-04</td>
+<td>Alerta de estoque crítico</td>
+<td>CT-PROD-U01, CT-PROD-010, CT-VEN-003, CT-API-012, BDD-EST-01</td>
+<td>5/5</td>
+<td>🟡 o alerta visual simultâneo nas telas depende do front-end (ADR D-11)</td>
+</tr>
+<tr>
+<td>VAL-05</td>
+<td>Controle rigoroso de caixa</td>
+<td>CT-CX-001 a 012, CT-CX-U10 a U16, CT-VEN-017, CT-CONC-003/004, CT-DB-003, BDD-CX-01 a 03</td>
+<td>26/26</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>VAL-06</td>
+<td>Segurança e criptografia (LGPD)</td>
+<td>CT-AUTH-003, 009, CT-AUTH-U02, U04 a U06, CT-SEG-001 a 004, 007, 009 a 020, CT-VEN-U24, CT-USR-001, CT-API-008</td>
+<td>26/26</td>
+<td>🟡 a API força HTTPS e envia HSTS (CT-SEG-018/020); falta o certificado TLS no ambiente AWS (PEND-07)</td>
+</tr>
+<tr>
+<td>VAL-07</td>
+<td>Desempenho (&lt; 3 s)</td>
+<td>CT-PERF-001 a 005</td>
+<td>5/5 (p95 máx. 281 ms; carga de 20 operadores, pior requisição 981 ms)</td>
+<td>🟡 medido em ambiente local; falta a medição na infraestrutura Docker/AWS (PEND-04)</td>
+</tr>
+<tr>
+<td>VAL-08</td>
+<td>Gestão de reserva de estoque</td>
+<td>CT-CONC-001 (objetivo da regra: nenhuma venda duplicada do mesmo saldo)</td>
+<td>1/1</td>
+<td>🟡 a reserva no carrinho não foi implementada (ADR D-02)</td>
+</tr>
+</tbody></table>
+<h2>3. Regras de sistema (documento &quot;Regras de Sistema&quot;)</h2>
+<table>
+<thead>
+<tr>
+<th>Req.</th>
+<th>Descrição</th>
+<th>Casos de teste</th>
+<th>Resultado</th>
+<th>Cobertura</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>R1.1</td>
+<td>Campos da venda: operador automático, produto, quantidade, cliente/consumidor padrão, pagamento, cupom/autorização</td>
+<td>CT-VEN-004, 005, 016, 020, CT-VEN-U17, BDD-DES</td>
+<td>6/6</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>R1.2</td>
+<td>LOG de auditoria obrigatório (usuário, data/hora, ação, valores anterior/novo)</td>
+<td>CT-AUD-001, 004, CT-PROD-006, 008, CT-USR-004, CT-CLI-009, CT-CAN-002, CT-VEN-020, CT-AUTH-002</td>
+<td>9/9</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>R2.1</td>
+<td>Validação de saldo e bloqueio com mensagem do estoque atual</td>
+<td>CT-VEN-002, BDD-EST-02</td>
+<td>2/2</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>R2.2</td>
+<td>Cancelamento exclusivo do Gerente com estorno automático</td>
+<td>CT-CAN-001, 002, BDD-CAN-01/02</td>
+<td>4/4</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>R2.3</td>
+<td>Autenticação obrigatória; alertas sincronizados em tempo real</td>
+<td>CT-SMK-002, CT-API-006, CT-SEG-001 a 003</td>
+<td>5/5</td>
+<td>🟡 a parte de &quot;tempo real nas telas&quot; é a mesma pendência do VAL-04</td>
+</tr>
+<tr>
+<td>§3</td>
+<td>Exemplos reais (Camiseta, Tênis 41, Meia, cancelamento negado e permitido)</td>
+<td>CT-VEN-001 a 003, CT-CAN-001/002, BDD-EST-01, BDD-CAN-01/02</td>
+<td>8/8</td>
+<td>✅ (incluído em R2.1/R2.2)</td>
+</tr>
+</tbody></table>
+<h2>4. Contrato da API v2.3</h2>
+<table>
+<thead>
+<tr>
+<th>Req.</th>
+<th>Descrição</th>
+<th>Casos de teste</th>
+<th>Resultado</th>
+<th>Cobertura</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CTR-01</td>
+<td>Paginação padronizada (<code>pagina</code>, <code>limite</code>, <code>total_registros</code>, <code>total_paginas</code>, <code>dados</code>)</td>
+<td>CT-PROD-011, CT-PAG-001 a 004</td>
+<td>5/5</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CTR-02</td>
+<td>Erros RFC 7807 (400, 401, 403, 404, 422) com <code>invalid_params</code></td>
+<td>CT-API-002 a 010, CT-SMK-002, CT-VEN-002, CT-CLI-006</td>
+<td>12/12</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CTR-03</td>
+<td>JSON em snake_case e datas com fuso −03:00</td>
+<td>CT-SMK-003, CT-PAG-005, CT-AUTH-001</td>
+<td>3/3</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CTR-04</td>
+<td>PUT substitui; PATCH altera parcialmente</td>
+<td>CT-PROD-006, 007, CT-CLI-009, 012, 013, CT-USR-007, CT-CUP-016, 017</td>
+<td>8/8</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CTR-05</td>
+<td>Soft delete (<code>ativo = false</code>)</td>
+<td>CT-PROD-009, CT-CLI-010, CT-USR-006, CT-CUP-014</td>
+<td>4/4</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CTR-06</td>
+<td>Vendas imutáveis (sem PUT/DELETE; cancelamento via POST)</td>
+<td>CT-VEN-019</td>
+<td>1/1</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>CTR-07</td>
+<td>JWT de 24 h, refresh e logout</td>
+<td>CT-AUTH-001, 005, 006, CT-SEG-010, 011, 012</td>
+<td>6/6</td>
+<td>✅</td>
+</tr>
+</tbody></table>
+<h2>5. Requisitos não funcionais e decisões do ADR</h2>
+<table>
+<thead>
+<tr>
+<th>Req.</th>
+<th>Descrição</th>
+<th>Casos de teste</th>
+<th>Resultado</th>
+<th>Cobertura</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RNF-01</td>
+<td>Containerização Docker e implantação AWS EC2</td>
+<td>— (smoke em servidor HTTP real executado; ver Relatório de Execução 11.7)</td>
+<td>Não executado</td>
+<td>❌ PEND-03 (sem Docker no ambiente de teste)</td>
+</tr>
+<tr>
+<td>RNF-02</td>
+<td>LGPD: dados de teste sintéticos, CPF mascarado no log, senha nunca exposta</td>
+<td>CT-AUTH-U04, CT-USR-001, CT-API-008</td>
+<td>3/3</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>RNF-03</td>
+<td>Integridade do banco (restrições, gatilhos de imutabilidade, papéis, migrações V1–V4)</td>
+<td>CT-DB-002 a 013</td>
+<td>12/12</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>ADR D-06</td>
+<td>Preço do catálogo prevalece sobre o enviado</td>
+<td>CT-VEN-012, CT-VEN-U14</td>
+<td>2/2</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>ADR D-04</td>
+<td>Base da comissão configurável (líquido padrão / bruto)</td>
+<td>CT-VEN-004, CT-CALC-001, 009, CT-COM-004</td>
+<td>4/4</td>
+<td>✅ (PEND-06 resolvida por configuração)</td>
+</tr>
+</tbody></table>
+<h2>6. Resumo da cobertura de requisitos</h2>
+<table>
+<thead>
+<tr>
+<th>Grupo</th>
+<th>Requisitos</th>
+<th>✅ Coberto</th>
+<th>🟡 Parcial</th>
+<th>❌ Não coberto</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Casos de uso</td>
+<td>16</td>
+<td>16</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Validações VAL</td>
+<td>8</td>
+<td>4</td>
+<td>4</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Regras de sistema</td>
+<td>5</td>
+<td>4</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Contrato da API</td>
+<td>7</td>
+<td>7</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Não funcionais</td>
+<td>3</td>
+<td>2</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>39</strong></td>
+<td><strong>33 (84,6%)</strong></td>
+<td><strong>5 (12,8%)</strong></td>
+<td><strong>1 (2,6%)</strong></td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>Requisitos com pelo menos um caso executado e aprovado:</strong> 38 de 39 (<strong>97,4%</strong>).</li>
+<li><strong>Requisitos do escopo do Ciclo 1 (Plano, seção 4.1) com pelo menos um caso aprovado:</strong> 38 de 38 (<strong>100%</strong>). Critério CS-4 atendido.</li>
+<li>O único requisito sem teste (RNF-01, Docker/AWS) estava fora do escopo deste ciclo por falta de Docker no ambiente.</li>
+</ul>
+</body></html>

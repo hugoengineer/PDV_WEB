@@ -1,0 +1,41 @@
+# Build
+target/
+build/
+out/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+!.env.exemplo
+*.pem
+*.key
+*.p12
+
+# Configuração local do Claude Code
+.claude/
+
+# Windows
+desktop.ini
+
+# Baixado automaticamente pelo Maven Wrapper (distributionType=only-script)
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Dependências do gerador de PDFs da documentação
+node_modules/
+
+# Cópias do banco geradas pelo serviço de backup do Docker
+pdv-web-api/backups/
+
+# CA local do proxy de teste (docker/README.md, seção HTTPS)
+pdv-web-api/ca-local.crt

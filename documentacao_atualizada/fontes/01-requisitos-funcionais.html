@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Requisitos Funcionais — PDV Web</title><link rel="stylesheet" href="estilo.css"></head>
+<body>
+<div class="doc-cabecalho">
+  <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
+  <div class="titulo">Requisitos Funcionais</div>
+  <div class="resumo">O que o sistema deve fazer: 16 requisitos (RF-01 a RF-16), um para cada caso de uso, com regras, critérios de aceitação, rotas da API e testes que os comprovam.</div>
+</div>
+<table class="meta">
+  <tr><td>Documento</td><td>DOC-01 · Requisitos Funcionais</td><td>Versão</td><td>2.0 — 28/10/2026</td></tr>
+  <tr><td>Equipe</td><td colspan="3">Hugo de Oliveira Guimarães, Jean Wictor, Cesar Franco</td></tr>
+  <tr><td>Situação anterior</td><td colspan="3">O Plano de Projeto citava "RF-01 ao RF-15", mas a lista não existia. Este documento cria a lista oficial (16 RFs, porque a auditoria — UC16 — também é um requisito funcional).</td></tr>
+  <tr><td>Fontes</td><td colspan="3">Detalhamento dos Casos de Uso (DOC-04), API v2.3, Regras de Sistema, Tabela de Planejamento, ADR-001 e o código do backend <code>pdv-web-api</code> 2.3.0</td></tr>
+</table>
+
+<h1>1. Convenções</h1>
+<ul>
+  <li><b>Atores:</b> <b>Vendedor</b>, <b>Gerente</b> (herda tudo o que o Vendedor faz) e <b>Sistema</b> (regras automáticas).</li>
+  <li><b>Prioridade:</b> <span class="tag r">Essencial</span> sem ela o PDV não opera · <span class="tag l">Importante</span> necessária à gestão · <span class="tag g">Desejável</span> melhora a operação.</li>
+  <li><b>Status:</b> todos os 16 requisitos estão <span class="ok">implementados e aprovados em teste</span> no backend (Ciclo 1, 265/265 testes).</li>
+  <li>Valores monetários têm 2 casas decimais e arredondamento comercial (meio para cima). Datas seguem o fuso de Brasília (−03:00).</li>
+</ul>
+
+<h1>2. Lista de requisitos</h1>
+<table>
+  <thead><tr><th style="width:9%">ID</th><th>Requisito</th><th style="width:9%">Caso de uso</th><th style="width:22%">Ator</th><th style="width:13%">Prioridade</th></tr></thead>
+  <tbody>
+    <tr><td>RF-01</td><td>Autenticar no sistema</td><td>UC01</td><td>Vendedor, Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-02</td><td>Abrir caixa</td><td>UC02</td><td>Vendedor, Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-03</td><td>Fechar caixa</td><td>UC03</td><td>Vendedor, Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-04</td><td>Registrar venda e consultar histórico</td><td>UC04</td><td>Vendedor, Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-05</td><td>Validar estoque automaticamente</td><td>UC05</td><td>Sistema</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-06</td><td>Aplicar cupom de desconto</td><td>UC06</td><td>Vendedor, Gerente</td><td><span class="tag l">Importante</span></td></tr>
+    <tr><td>RF-07</td><td>Aplicar desconto direto do gerente</td><td>UC07</td><td>Gerente (ou Vendedor com senha do gerente)</td><td><span class="tag l">Importante</span></td></tr>
+    <tr><td>RF-08</td><td>Cadastrar e gerenciar clientes</td><td>UC08</td><td>Vendedor, Gerente</td><td><span class="tag l">Importante</span></td></tr>
+    <tr><td>RF-09</td><td>Consultar estoque e alertas críticos</td><td>UC09</td><td>Vendedor, Gerente</td><td><span class="tag l">Importante</span></td></tr>
+    <tr><td>RF-10</td><td>Gerar relatório de comissões</td><td>UC10</td><td>Vendedor (própria), Gerente (todas)</td><td><span class="tag l">Importante</span></td></tr>
+    <tr><td>RF-11</td><td>Cancelar venda com estorno</td><td>UC11</td><td>Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-12</td><td>Gerenciar catálogo de produtos</td><td>UC12</td><td>Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-13</td><td>Gerenciar funcionários e comissões</td><td>UC13</td><td>Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-14</td><td>Emitir e gerenciar cupons</td><td>UC14</td><td>Gerente</td><td><span class="tag g">Desejável</span></td></tr>
+    <tr><td>RF-15</td><td>Realizar sangria e suprimento de caixa</td><td>UC15</td><td>Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-16</td><td>Consultar logs de auditoria</td><td>UC16</td><td>Gerente</td><td><span class="tag l">Importante</span></td></tr>
+  </tbody>
+</table>
+
+<h1 class="quebra">3. Detalhamento</h1>
+
+<div class="ficha"><div class="topo"><b>RF-01 — Autenticar no sistema</b><span><span class="tag g">UC01</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O usuário entra com CPF e senha e recebe um token de acesso, que deve ser enviado em todas as demais requisições.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>O CPF é aceito com ou sem pontuação.</li>
+    <li>CPF inexistente, senha errada ou usuário inativo recebem a mesma resposta ("CPF ou senha inválidos."), sem revelar qual falhou.</li>
+    <li>O token vale 24 horas e traz o perfil do usuário. A resposta inclui id, nome, perfil e percentual de comissão.</li>
+    <li>A renovação (<i>refresh</i>) emite um token novo e invalida o anterior. O logout invalida o token atual.</li>
+    <li>A troca de senha exige a senha atual; a nova deve ter de 8 a 72 caracteres e ser diferente da atual.</li>
+    <li>Se o usuário for inativado ou tiver o perfil alterado, os tokens emitidos antes deixam de valer imediatamente.</li>
+    <li>Toda tentativa de login com falha é registrada na auditoria, com o CPF mascarado (só os 4 últimos dígitos).</li>
+    <li>Após 5 senhas erradas para o mesmo CPF (ou 20 do mesmo IP) em 15 minutos, o login fica bloqueado por 15 minutos (429, com o tempo de espera em <code>Retry-After</code>). O bloqueio vale igual para CPF inexistente e é auditado.</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>Login válido → 200 com token. Credenciais inválidas → 401. Token adulterado, expirado ou revogado → 401.</td></tr>
+  <tr><td>Rotas</td><td><code>POST /auth/login</code> · <code>POST /auth/refresh-token</code> · <code>POST /auth/logout</code> · <code>PATCH /auth/alterar-senha</code></td></tr>
+  <tr><td>Testes</td><td>CT-AUTH-001 a 009, CT-AUTH-U01 a U04, CT-SEG-001 a 004, CT-SEG-009</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-02 — Abrir caixa</b><span><span class="tag g">UC02</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>No início do turno, o operador abre o próprio caixa informando o fundo de troco (suprimento inicial).</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>O suprimento inicial é obrigatório, maior ou igual a zero, com até 2 casas decimais.</li>
+    <li>Cada operador pode ter <b>um único caixa ABERTO</b>; uma segunda abertura é recusada (409).</li>
+    <li>O operador consulta o caixa aberto e o saldo parcial do turno. Um Vendedor não consulta o caixa de outro operador (403).</li>
+    <li>A abertura é registrada na auditoria.</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>201 com status ABERTO; segunda abertura → 409 <code>caixa-ja-aberto</code>; sem caixa aberto, a consulta do caixa atual → 404.</td></tr>
+  <tr><td>Rotas</td><td><code>POST /caixas/abertura</code> · <code>GET /caixas/atual</code> · <code>GET /caixas/{id}</code></td></tr>
+  <tr><td>Testes</td><td>CT-CX-001 a 003, CT-CX-012, CT-CX-U10, CT-CONC-004, CT-SEG-006</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-03 — Fechar caixa</b><span><span class="tag g">UC03</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>No fim do turno, o operador informa o dinheiro contado; o sistema calcula o esperado, registra a diferença e fecha o caixa.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Saldo esperado em dinheiro = suprimento inicial + suprimentos + vendas <b>em dinheiro</b> concluídas − sangrias.</li>
+    <li>Diferença = valor contado − saldo esperado (positiva = sobra; negativa = falta).</li>
+    <li>O Vendedor só fecha o próprio caixa; o Gerente pode fechar qualquer um.</li>
+    <li>Um caixa FECHADO não aceita novo fechamento, sangria, suprimento nem venda (422 <code>caixa-fechado</code>).</li>
+    <li>A resposta traz total de vendas, total em dinheiro, sangrias, suprimentos, saldo esperado, valor informado e diferença.</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>200 com status FECHADO e a diferença calculada; ações em caixa fechado → 422.</td></tr>
+  <tr><td>Rotas</td><td><code>POST /caixas/{id}/fechamento</code></td></tr>
+  <tr><td>Testes</td><td>CT-CX-009 a 011, CT-CX-U01, CT-CX-U02, CT-CX-U13, BDD-CX-02</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-04 — Registrar venda e consultar histórico</b><span><span class="tag g">UC04</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O operador registra uma venda com um ou mais itens, identifica o cliente (ou usa o Consumidor Padrão) e a forma de pagamento.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Exige um caixa ABERTO do próprio operador (caixa de outro → 403; fechado → 422; inexistente → 404).</li>
+    <li>Cliente opcional: sem cliente, a venda vai para o "CONSUMIDOR PADRÃO". Cliente inexistente ou inativo → 404.</li>
+    <li>Formas de pagamento: Dinheiro, PIX, Cartão de Crédito, Cartão de Débito e Crediário (simuladas, sem TEF).</li>
+    <li>De 1 a 200 itens; quantidade de 1 a 10.000 por item; o mesmo produto repetido é somado.</li>
+    <li>Produto inexistente ou inativo → 404. O preço praticado é sempre o do catálogo; o preço enviado pelo cliente é ignorado.</li>
+    <li>Estoque validado pelo RF-05; descontos pelo RF-06 e RF-07.</li>
+    <li>A comissão do vendedor (valor líquido × percentual; ou subtotal bruto × percentual com <code>PDV_COMISSAO_BASE=BRUTO</code>) é calculada e o percentual fica <b>congelado</b> na venda.</li>
+    <li>Tudo acontece numa única transação: venda, itens, baixa de estoque e auditoria; qualquer falha desfaz tudo.</li>
+    <li>A resposta inclui a lista de produtos que atingiram o estoque mínimo (alerta crítico).</li>
+    <li>Vendas são imutáveis: não podem ser editadas nem excluídas (405). Só podem ser canceladas (RF-11).</li>
+    <li>Histórico paginado com filtros de período, vendedor e status. O Vendedor vê só as próprias vendas.</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>201 com subtotal, descontos, total, comissão e status CONCLUIDA; estoque baixado no banco.</td></tr>
+  <tr><td>Rotas</td><td><code>POST /vendas</code> · <code>GET /vendas</code> · <code>GET /vendas/{id}</code></td></tr>
+  <tr><td>Testes</td><td>CT-VEN-001 a 020, CT-VEN-U10 a U19, CT-HIS-001 a 003, BDD-EST-01/02</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-05 — Validar estoque automaticamente</b><span><span class="tag g">UC05</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>Durante o registro da venda, o sistema confere se há saldo para todos os itens antes de baixar qualquer um.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Para cada produto, a quantidade total pedida deve ser menor ou igual ao <code>estoque_atual</code>.</li>
+    <li>Os produtos ficam bloqueados no banco durante a venda, para que duas vendas simultâneas não usem o mesmo saldo.</li>
+    <li>Se algum item não tiver saldo, a venda inteira é recusada e nada é gravado.</li>
+    <li>A mensagem informa o estoque atual de cada produto sem saldo: "Estoque atual é X, mas foi solicitado Y."</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>422 <code>estoque-insuficiente</code> com <code>invalid_params</code> por produto; estoque inalterado. Vender exatamente o saldo é permitido.</td></tr>
+  <tr><td>Rotas</td><td>Interno ao <code>POST /vendas</code></td></tr>
+  <tr><td>Testes</td><td>CT-VEN-002, 013, 014, 015, CT-VEN-U10, U15, CT-PROD-U02/U03, CT-CONC-001, CT-DB-002, BDD-EST-01/02</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-06 — Aplicar cupom de desconto</b><span><span class="tag g">UC06</span> <span class="tag l">Importante</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O operador informa o código de um cupom na venda; o desconto é calculado sobre o subtotal.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>O código não diferencia maiúsculas de minúsculas.</li>
+    <li>O cupom precisa existir, estar ativo e vigente (início ≤ agora ≤ término, com os dois limites inclusivos). Caso contrário → 422 <code>cupom-invalido</code>.</li>
+    <li>Percentual: subtotal × percentual ÷ 100, arredondado em centavos. Valor fixo: o valor do cupom, limitado ao subtotal.</li>
+    <li>O desconto do cupom é aplicado <b>antes</b> do desconto direto do gerente.</li>
+    <li>O Vendedor pode usar cupom sem autorização adicional.</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>Cupom de 10% sobre R$ 250,00 → desconto de R$ 25,00.</td></tr>
+  <tr><td>Rotas</td><td>Campo <code>cupom_codigo</code> do <code>POST /vendas</code></td></tr>
+  <tr><td>Testes</td><td>CT-CUP-001 a 008, CT-VEN-004, 010, 011, CT-CALC-001, 005, BDD-DES R2/R6/R7</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-07 — Aplicar desconto direto do gerente</b><span><span class="tag g">UC07</span> <span class="tag l">Importante</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>Desconto em valor fixo (R$) concedido pelo Gerente, ou pelo Vendedor com a senha de um Gerente.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>O desconto é um valor em reais (não percentual), maior ou igual a zero, com até 2 casas decimais.</li>
+    <li>Incide sobre o valor que sobra depois do cupom. Se for maior que esse valor → 422 <code>desconto-invalido</code> (o total nunca fica negativo).</li>
+    <li>Gerente: dispensa autorização. Vendedor: deve enviar <code>senha_autorizacao_gerente</code>, conferida contra os gerentes ativos; ausente ou incorreta → 403.</li>
+    <li>O gerente que autorizou fica gravado na venda e o desconto gera um registro de auditoria próprio.</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>R$ 250,00 − cupom 10% − R$ 10,00 = <b>R$ 215,00</b> (exemplo do contrato da API).</td></tr>
+  <tr><td>Rotas</td><td>Campos <code>desconto_direto_gerente</code> e <code>senha_autorizacao_gerente</code> do <code>POST /vendas</code></td></tr>
+  <tr><td>Testes</td><td>CT-VEN-004, 006 a 009, CT-VEN-U12, U13, CT-CALC-001 a 004, BDD-DES R3 a R8</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-08 — Cadastrar e gerenciar clientes</b><span><span class="tag g">UC08</span> <span class="tag l">Importante</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>Cadastro de clientes Pessoa Física (CPF) ou Jurídica (CNPJ), usados na identificação da venda.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Tipo PF exige CPF válido; tipo PJ exige CNPJ válido (dígitos verificadores conferidos). Grava só os dígitos.</li>
+    <li>O documento é único (duplicado → 409). Documentos com todos os dígitos iguais são recusados.</li>
+    <li>Nome/razão social obrigatório (até 150 caracteres). E-mail, telefone, CEP (8 dígitos), endereço, bairro, cidade e UF são opcionais.</li>
+    <li>O "CONSUMIDOR PADRÃO" é reservado pelo sistema e não pode ser alterado nem inativado (422).</li>
+    <li>Consulta paginada por documento (com ou sem máscara) e por parte do nome.</li>
+    <li>PUT substitui o cadastro; PATCH altera só os campos enviados. Exclusão é lógica e só o Gerente pode fazê-la.</li></ol></td></tr>
+  <tr><td>Rotas</td><td><code>POST</code> · <code>GET</code> · <code>PUT</code> · <code>PATCH /clientes[/{id}]</code> · <code>DELETE /clientes/{id}</code></td></tr>
+  <tr><td>Testes</td><td>CT-CLI-001 a 011, CT-DOC-001 a 012, CT-DB-005</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-09 — Consultar estoque e alertas críticos</b><span><span class="tag g">UC09</span> <span class="tag l">Importante</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>Consulta de produtos com saldo atual, estoque mínimo e indicação de estoque crítico.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Estoque crítico quando <code>estoque_atual ≤ estoque_minimo</code>.</li>
+    <li>Filtros: SKU (exato), nome (parcial, sem diferenciar maiúsculas), somente críticos, incluir inativos.</li>
+    <li>Listagem paginada (padrão 20, máximo 100 por página). Disponível para os dois perfis.</li></ol></td></tr>
+  <tr><td>Rotas</td><td><code>GET /produtos</code> · <code>GET /produtos/{id}</code></td></tr>
+  <tr><td>Testes</td><td>CT-PROD-010, 012, CT-API-012, CT-PROD-U01, CT-PERF-001/002/004</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-10 — Gerar relatório de comissões</b><span><span class="tag g">UC10</span> <span class="tag l">Importante</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>Consolida, por vendedor e período, quantidade de vendas, valor vendido e comissão acumulada.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Só vendas CONCLUIDAS entram na soma; canceladas ficam de fora.</li>
+    <li>A comissão acumulada soma os valores congelados em cada venda; mudar o percentual do vendedor não altera vendas passadas.</li>
+    <li>Vendedor: só a própria comissão (pedir a de outro → 403). Gerente: de um vendedor (objeto) ou de todos (lista, incluindo vendedores sem vendas).</li>
+    <li>Período opcional (data inicial e final; final anterior à inicial → 400).</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>15 vendas de R$ 300,00 com 5% → total vendido R$ 4.500,00 e comissão R$ 225,00.</td></tr>
+  <tr><td>Rotas</td><td><code>GET /vendas/comissoes</code></td></tr>
+  <tr><td>Testes</td><td>CT-COM-001 a 003, CT-CALC-006/007, CT-CAN-005</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-11 — Cancelar venda com estorno</b><span><span class="tag g">UC11</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O Gerente cancela uma venda concluída; os itens voltam ao estoque e a venda sai dos totais.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Exclusivo do Gerente (Vendedor → 403 "Acesso Negado").</li>
+    <li>Motivo obrigatório, de 5 a 255 caracteres.</li>
+    <li>CONCLUIDA → CANCELADA. Uma venda já cancelada não pode ser cancelada de novo (422), e o estoque nunca é estornado duas vezes.</li>
+    <li>As quantidades voltam ao estoque na mesma transação; a venda deixa de contar no caixa e nas comissões.</li>
+    <li>O cancelamento é auditado com o motivo e os itens estornados.</li></ol></td></tr>
+  <tr><td>Rotas</td><td><code>POST /vendas/{id}/cancelar</code></td></tr>
+  <tr><td>Testes</td><td>CT-CAN-001 a 006, CT-VEN-U01/U02, CT-CONC-002, BDD-CAN-01 a 03</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-12 — Gerenciar catálogo de produtos</b><span><span class="tag g">UC12</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O Gerente cadastra, altera, ajusta o estoque e inativa produtos.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>SKU obrigatório e único (até 40 caracteres; letras, números, ponto, hífen e sublinhado; gravado em maiúsculas).</li>
+    <li>Nome obrigatório (até 120). Fornecedor opcional. Unidade de medida obrigatória (1 a 10 letras, ex.: UN, KG, CX, PCT).</li>
+    <li>Código de barras opcional, de 8 a 14 dígitos, único. NCM com 8 dígitos e CEST com 7 (pontuação opcional).</li>
+    <li>Preço de venda maior que zero (até R$ 99.999.999,99). Estoque atual e mínimo de 0 a 1.000.000.</li>
+    <li>PUT substitui; PATCH altera só os campos enviados. Exclusão lógica preserva o histórico de vendas.</li>
+    <li>Cadastro, alteração (com preço anterior e novo), ajuste de estoque e inativação são auditados.</li></ol></td></tr>
+  <tr><td>Rotas</td><td><code>POST</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE /produtos[/{id}]</code></td></tr>
+  <tr><td>Testes</td><td>CT-PROD-001 a 013, CT-PROD-U05 a U07, CT-API-001 a 011</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-13 — Gerenciar funcionários e comissões</b><span><span class="tag g">UC13</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O Gerente cadastra funcionários, define perfil e percentual de comissão e pode inativá-los.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>CPF válido e único. Nome obrigatório (até 100). Perfil VENDEDOR ou GERENTE.</li>
+    <li>Percentual de comissão de 0 a 100, com até 2 casas. Senha inicial de 8 a 72 caracteres.</li>
+    <li>A senha nunca aparece nas respostas. Ela só muda pelo próprio usuário (RF-01).</li>
+    <li>O Gerente não pode inativar a si mesmo nem retirar o próprio perfil de Gerente.</li>
+    <li>Inativar ou mudar o perfil encerra imediatamente as sessões do funcionário.</li>
+    <li>O primeiro Gerente é criado na instalação, a partir das variáveis de ambiente <code>PDV_ADMIN_CPF</code> e <code>PDV_ADMIN_SENHA</code>.</li></ol></td></tr>
+  <tr><td>Rotas</td><td><code>POST</code> · <code>GET</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE /usuarios[/{id}]</code></td></tr>
+  <tr><td>Testes</td><td>CT-USR-001 a 006, CT-SEG-004, CT-SEG-009, CT-AUTH-U03</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-14 — Emitir e gerenciar cupons</b><span><span class="tag g">UC14</span> <span class="tag g">Desejável</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O Gerente cria cupons com período de validade; os vendedores consultam e usam.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Código de 3 a 30 caracteres (letras, números, hífen, sublinhado), único, gravado em maiúsculas.</li>
+    <li>Tipo PERCENTUAL ou VALOR_FIXO; valor maior que zero (percentual até 100).</li>
+    <li>Data de início e de término obrigatórias; o término deve ser posterior ao início.</li>
+    <li>O indicador "vigente" é calculado na hora da consulta. Filtros: código e vigente.</li>
+    <li>Escrita só pelo Gerente; leitura pelos dois perfis. Exclusão lógica.</li></ol></td></tr>
+  <tr><td>Rotas</td><td><code>POST</code> · <code>GET</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE /cupons[/{id}]</code></td></tr>
+  <tr><td>Testes</td><td>CT-CUP-009 a 016</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-15 — Realizar sangria e suprimento de caixa</b><span><span class="tag g">UC15</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O Gerente retira (sangria) ou adiciona (suprimento) dinheiro em espécie num caixa aberto.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Exclusivo do Gerente; o caixa precisa estar ABERTO.</li>
+    <li>Valor maior que zero; justificativa obrigatória (até 255 caracteres).</li>
+    <li>A sangria não pode ser maior que o saldo em dinheiro do caixa (422 <code>saldo-caixa-insuficiente</code>).</li>
+    <li>A resposta traz o saldo em dinheiro atualizado; a operação é auditada com saldo anterior e novo.</li></ol></td></tr>
+  <tr><td>Rotas</td><td><code>POST /caixas/{id}/sangria</code> · <code>POST /caixas/{id}/suprimento</code></td></tr>
+  <tr><td>Testes</td><td>CT-CX-004, 006 a 008, CT-CX-U11, CT-CONC-003, BDD-CX-03</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-16 — Consultar logs de auditoria</b><span><span class="tag g">UC16</span> <span class="tag l">Importante</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O Gerente consulta o histórico de ações sensíveis realizadas no sistema.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Cada registro guarda usuário, data/hora, tipo de ação, entidade afetada, detalhes, valor anterior e valor novo.</li>
+    <li>São auditados: login (sucesso e falha), troca de senha, caixa (abertura, fechamento, sangria, suprimento), venda, desconto do gerente, cancelamento e o cadastro/alteração/inativação de produtos, estoque, clientes, cupons e funcionários.</li>
+    <li>Uma operação que falha não deixa registro (o log participa da mesma transação).</li>
+    <li>Filtros por período e tipo de ação; resultados do mais recente para o mais antigo, paginados.</li></ol></td></tr>
+  <tr><td>Rotas</td><td><code>GET /auditoria</code></td></tr>
+  <tr><td>Testes</td><td>CT-AUD-001 a 004</td></tr>
+</table></div></div>
+
+<h1 class="quebra">4. Validações de sistema (numeração unificada)</h1>
+<p>A Tabela de Planejamento listava as validações até VAL-07; a Documentação do Projeto acrescentou a VAL-08. Os nomes também
+variavam entre os documentos. Fica valendo a numeração abaixo, já usada no código, nos testes e nos demais documentos atualizados.</p>
+<table>
+  <thead><tr><th style="width:9%">ID</th><th style="width:24%">Validação</th><th>Regra</th><th style="width:15%">Requisitos</th><th style="width:12%">Situação</th></tr></thead>
+  <tbody>
+    <tr><td>VAL-01</td><td>Bloqueio de saldo insuficiente</td><td>Não concluir venda com quantidade maior que o saldo atual</td><td>RF-04, RF-05</td><td class="ok">Atendida</td></tr>
+    <tr><td>VAL-02</td><td>Controle de perfil e acesso</td><td>Operações administrativas exclusivas do Gerente</td><td>Todos</td><td class="ok">Atendida</td></tr>
+    <tr><td>VAL-03</td><td>Estorno no cancelamento</td><td>Cancelar devolve os itens ao estoque e retira a venda dos totais</td><td>RF-11</td><td class="ok">Atendida</td></tr>
+    <tr><td>VAL-04</td><td>Alerta de estoque crítico</td><td>Alertar quando o estoque atingir o mínimo</td><td>RF-04, RF-09</td><td class="warn">Backend pronto; tela depende do front-end</td></tr>
+    <tr><td>VAL-05</td><td>Controle rigoroso de caixa</td><td>Vender só com caixa aberto; sangria registrada na hora</td><td>RF-02, RF-03, RF-15</td><td class="ok">Atendida</td></tr>
+    <tr><td>VAL-06</td><td>Segurança e criptografia (LGPD)</td><td>Senhas em hash, tráfego HTTPS, dados pessoais protegidos</td><td>RF-01, RNF-01 a 03</td><td class="warn">HTTPS pendente (infraestrutura)</td></tr>
+    <tr><td>VAL-07</td><td>Desempenho e tempo de resposta</td><td>Consultas, inclusão de itens e finalização em menos de 3 s</td><td>RNF-04</td><td class="ok">Atendida (medição local)</td></tr>
+    <tr><td>VAL-08</td><td>Gestão de reserva de estoque</td><td>Itens no carrinho reservam saldo para evitar venda duplicada</td><td>RF-05, RNF-05</td><td class="warn">Parcial — reserva no carrinho adiada; venda duplicada já é impedida na finalização</td></tr>
+  </tbody>
+</table>
+
+<h1>5. Rastreabilidade resumida</h1>
+<table>
+  <thead><tr><th style="width:10%">RF</th><th style="width:10%">UC</th><th>Documento de origem</th><th style="width:28%">Requisito não funcional relacionado</th></tr></thead>
+  <tbody>
+    <tr><td>RF-01</td><td>UC01</td><td>Plano 1.3 (acesso por CPF e senha); Regras 2.3</td><td>RNF-01, RNF-02, RNF-03</td></tr>
+    <tr><td>RF-02/03</td><td>UC02/03</td><td>Plano 1.6; VAL-05</td><td>RNF-06</td></tr>
+    <tr><td>RF-04/05</td><td>UC04/05</td><td>Regras 1.1 e 2.1; VAL-01; VAL-08</td><td>RNF-04, RNF-05, RNF-06</td></tr>
+    <tr><td>RF-06/07</td><td>UC06/07</td><td>Regras 1.1 (cupom / autorização); API v2.3 §2</td><td>RNF-02, RNF-06</td></tr>
+    <tr><td>RF-08</td><td>UC08</td><td>Regra 1.1.1.9; Dicionário (CLIENTE)</td><td>RNF-03</td></tr>
+    <tr><td>RF-09</td><td>UC09</td><td>VAL-04; Regra 2.3</td><td>RNF-04</td></tr>
+    <tr><td>RF-10</td><td>UC10</td><td>Plano 1.3; Regra 1.1.1.11</td><td>RNF-06</td></tr>
+    <tr><td>RF-11</td><td>UC11</td><td>Regra 2.2; VAL-03</td><td>RNF-02, RNF-07</td></tr>
+    <tr><td>RF-12 a 14</td><td>UC12 a 14</td><td>Plano 1.6 (tela do Gerente)</td><td>RNF-02, RNF-07</td></tr>
+    <tr><td>RF-15</td><td>UC15</td><td>Documentação do Projeto §1 (sangria)</td><td>RNF-06, RNF-07</td></tr>
+    <tr><td>RF-16</td><td>UC16</td><td>Regra 1.2 (LOG)</td><td>RNF-07</td></tr>
+  </tbody>
+</table>
+<p class="muted">A rastreabilidade completa (requisito → casos de teste → resultado) está na Matriz de Rastreabilidade, na pasta de testes.</p>
+</body></html>

@@ -1,0 +1,6 @@
+# Scripts executados em Linux (Docker/AWS) precisam de LF mesmo com core.autocrlf=true no Windows
+mvnw    text eol=lf
+*.sh    text eol=lf
+*.cmd   text eol=crlf
+*.pdf   binary
+*.sql   text eol=lf

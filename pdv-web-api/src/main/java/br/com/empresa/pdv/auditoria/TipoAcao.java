@@ -1,0 +1,30 @@
+package br.com.empresa.pdv.auditoria;
+
+/** Ações sensíveis registradas obrigatoriamente no LOG de auditoria (Regra de Sistema 1.2). */
+public enum TipoAcao {
+    LOGIN_SUCESSO,
+    LOGIN_FALHA,
+    ACESSO_BLOQUEADO,
+    AUTORIZACAO_FALHA,
+    SENHA_ALTERADA,
+    USUARIO_CREATE,
+    USUARIO_UPDATE,
+    USUARIO_INATIVACAO,
+    PRODUTO_CREATE,
+    PRODUTO_UPDATE,
+    PRODUTO_INATIVACAO,
+    ESTOQUE_AJUSTE,
+    CLIENTE_CREATE,
+    CLIENTE_UPDATE,
+    CLIENTE_INATIVACAO,
+    CUPOM_CREATE,
+    CUPOM_UPDATE,
+    CUPOM_INATIVACAO,
+    CAIXA_ABERTURA,
+    CAIXA_FECHAMENTO,
+    SANGRIA,
+    SUPRIMENTO,
+    VENDA_REGISTRO,
+    DESCONTO_GERENTE,
+    CANCELAMENTO_VENDA
+}

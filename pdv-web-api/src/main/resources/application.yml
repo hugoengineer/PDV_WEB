@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: pdv-web-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pdv_web}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:}
+    hikari:
+      # Falha rápida se o banco não responder, em vez de travar a requisição
+      connection-timeout: 5000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+
+server:
+  port: ${PORT:8080}
+  # Atrás do balanceador (AWS ALB) que termina o TLS: usa X-Forwarded-For/Proto apenas de proxies
+  # da rede interna (10.x, 172.16-31.x, 192.168.x, 127.x). Um cliente externo não consegue forjar o IP.
+  forward-headers-strategy: native
+  # Encerramento gracioso: termina as requisições em andamento antes de parar (deploy sem perder vendas)
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+
+springdoc:
+  api-docs:
+    enabled: ${PDV_DOCUMENTACAO_API:false}
+  swagger-ui:
+    enabled: ${PDV_DOCUMENTACAO_API:false}
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+pdv:
+  fuso-horario: America/Sao_Paulo
+  jwt:
+    # Obrigatório: no mínimo 32 caracteres (HS256)
+    segredo: ${PDV_JWT_SEGREDO:}
+    validade: 24h
+  comissao:
+    # LIQUIDO (padrão, exemplo da API v2.3) ou BRUTO (Tabela de Regras 1.1.1.11) — decisão da equipe (ADR D-04)
+    base: ${PDV_COMISSAO_BASE:LIQUIDO}
+  seguranca:
+    # true em produção quando a API recebe tráfego HTTP direto (redireciona para HTTPS)
+    exigir-https: ${PDV_EXIGIR_HTTPS:false}
+    intervalo-limpeza: PT1H
+    tentativas:
+      max-falhas-cpf: 5
+      max-falhas-ip: 20
+      max-falhas-senha-gerente: 5
+      janela: 15m
+      bloqueio: 15m
+  admin:
+    # Gerente inicial criado na primeira subida, se ainda não existir nenhum gerente ativo
+    cpf: ${PDV_ADMIN_CPF:}
+    nome: ${PDV_ADMIN_NOME:Gerente Administrador}
+    senha: ${PDV_ADMIN_SENHA:}

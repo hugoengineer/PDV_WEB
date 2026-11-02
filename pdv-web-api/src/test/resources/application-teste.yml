@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    username: postgres
+    password: postgres
+    hikari:
+      maximum-pool-size: 40
+  jpa:
+    open-in-view: false
+
+pdv:
+  jwt:
+    segredo: segredo-exclusivo-dos-testes-automatizados-0123456789
+  admin:
+    # CPF sintético (dígitos verificadores válidos); não pertence a uma pessoa real conhecida
+    cpf: "11144477735"
+    nome: Gerente de Teste
+    senha: Gerente@Teste1
+
+logging:
+  level:
+    root: WARN
+    br.com.empresa.pdv: INFO
+    org.flywaydb: WARN

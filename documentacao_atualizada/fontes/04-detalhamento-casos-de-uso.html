@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Detalhamento dos Casos de Uso — PDV Web</title><link rel="stylesheet" href="estilo.css"></head>
+<body>
+<div class="doc-cabecalho">
+  <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
+  <div class="titulo">Detalhamento dos Casos de Uso</div>
+  <div class="resumo">Atores, pré-condições, fluxo principal, fluxos alternativos e de exceção e pós-condições dos 16 casos de uso (UC01–UC16).</div>
+</div>
+<table class="meta">
+  <tr><td>Documento</td><td>DOC-04 · Especificação de Casos de Uso</td><td>Versão</td><td>2.0 — 28/10/2026</td></tr>
+  <tr><td>Equipe</td><td colspan="3">Hugo de Oliveira Guimarães, Jean Wictor, Cesar Franco</td></tr>
+  <tr><td>Versão anterior</td><td colspan="3">"Documentação de Casos de Uso — PDV Web" (09/2026). A numeração UC01–UC16 foi mantida. Foram acrescentados: pós-condições, exceções com o código de resposta da API, suprimento de caixa no UC15, invalidação de sessão no UC13 e as regras de proteção implementadas.</td></tr>
+  <tr><td>Relacionados</td><td colspan="3">DOC-01 Requisitos Funcionais (RF-xx correspondente) · DOC-03 Diagrama de Casos de Uso</td></tr>
+</table>
+
+<h1>1. Atores</h1>
+<table>
+  <tbody>
+    <tr><td style="width:16%"><b>Vendedor</b></td><td>Operador: abre e fecha o próprio caixa, cadastra clientes e realiza vendas.</td></tr>
+    <tr><td><b>Gerente</b></td><td>Privilégios administrativos: catálogo, cupons, descontos diretos, sangria/suprimento, cancelamentos, funcionários, auditoria e comissões consolidadas. Herda os casos de uso do Vendedor.</td></tr>
+    <tr><td><b>Sistema</b></td><td>Executa validações automáticas (estoque, descontos, permissões) e registra a auditoria.</td></tr>
+  </tbody>
+</table>
+<p class="muted">Convenção das exceções: entre parênteses, o código HTTP e o tipo de erro devolvidos pela API.</p>
+
+<h1 class="quebra">2. Casos de uso</h1>
+
+<div class="ficha"><div class="topo"><b>UC01 — Autenticar no sistema</b><span class="tag g">RF-01</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Vendedor, Gerente</td></tr>
+  <tr><td>Pré-condições</td><td>Usuário cadastrado e ativo.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O usuário informa CPF e senha.</li><li>O sistema valida as credenciais.</li><li>O sistema gera um token válido por 24 h e devolve id, nome, perfil e percentual de comissão.</li><li>O usuário é direcionado ao painel do seu perfil.</li></ol></td></tr>
+  <tr><td>Fluxos alternativos</td><td><b>A1 Renovar sessão:</b> com o token atual, o usuário solicita a renovação; o sistema emite um novo token e invalida o anterior.<br><b>A2 Encerrar sessão:</b> o usuário faz logout e o token é invalidado.<br><b>A3 Trocar senha:</b> informa a senha atual e a nova (8 a 72 caracteres, diferente da atual).</td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> CPF inexistente, senha errada ou usuário inativo → mensagem única "CPF ou senha inválidos." (401); a tentativa é auditada com CPF mascarado.<br><b>E2</b> Campos vazios (400). <b>E3</b> Senha atual incorreta na troca (400).<br><b>E4</b> 5 senhas erradas para o mesmo CPF (ou 20 do mesmo IP) em 15 min → login bloqueado por 15 min, mesmo com a senha certa: 429 com <code>Retry-After</code>; bloqueio auditado (<code>ACESSO_BLOQUEADO</code>). <b>E5</b> Token expirado, revogado (logout/renovação, inclusive após reinício) ou de usuário inativado/com perfil alterado → 401.</td></tr>
+  <tr><td>Pós-condições</td><td>Sessão ativa; login registrado na auditoria. Se o usuário for inativado ou mudar de perfil, a sessão é encerrada.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC02 — Abrir caixa</b><span class="tag g">RF-02</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Vendedor, Gerente</td></tr>
+  <tr><td>Pré-condições</td><td>Usuário autenticado; nenhum caixa aberto em seu nome.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O operador acessa a abertura de caixa.</li><li>Informa o suprimento inicial (fundo de troco) em R$.</li><li>O sistema cria o caixa com status ABERTO, vinculado ao operador, com data/hora de abertura.</li><li>O sistema confirma a abertura.</li></ol></td></tr>
+  <tr><td>Fluxos alternativos</td><td><b>A1 Consultar caixa atual:</b> o operador vê o saldo parcial do turno (vendas, vendas em dinheiro, sangrias, suprimentos e saldo em dinheiro).</td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Já existe caixa aberto (409 <code>caixa-ja-aberto</code>). <b>E2</b> Suprimento negativo (400). <b>E3</b> Vendedor consultando caixa de outro operador (403).</td></tr>
+  <tr><td>Pós-condições</td><td>Caixa ABERTO; vendas liberadas para o operador; abertura auditada.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC03 — Fechar caixa</b><span class="tag g">RF-03</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Vendedor (próprio caixa), Gerente (qualquer caixa)</td></tr>
+  <tr><td>Pré-condições</td><td>Caixa ABERTO.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O operador conta o dinheiro e informa o valor final.</li><li>O sistema calcula o saldo esperado: suprimento inicial + suprimentos + vendas em dinheiro concluídas − sangrias.</li><li>O sistema registra a diferença (sobra ou falta), muda o status para FECHADO e grava a data/hora.</li><li>O sistema exibe o resumo financeiro do turno.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Caixa já fechado (422 <code>caixa-fechado</code>). <b>E2</b> Vendedor tentando fechar caixa de outro (403). <b>E3</b> Valor negativo (400).</td></tr>
+  <tr><td>Pós-condições</td><td>Caixa FECHADO; novas vendas, sangrias e suprimentos nele são bloqueados; fechamento auditado.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC04 — Registrar venda</b><span class="tag g">RF-04</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Vendedor, Gerente</td></tr>
+  <tr><td>Pré-condições</td><td>Caixa do próprio operador ABERTO; produtos ativos no catálogo.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol>
+    <li>O operador informa o caixa, o cliente (opcional) e a forma de pagamento (Dinheiro, PIX, Cartão de Crédito, Cartão de Débito ou Crediário).</li>
+    <li>Adiciona os itens (produto e quantidade); itens repetidos do mesmo produto são somados.</li>
+    <li>(Opcional) Aplica cupom (UC06) e/ou desconto direto (UC07).</li>
+    <li>O sistema valida o estoque (UC05).</li>
+    <li>O sistema calcula o subtotal com os preços do catálogo e aplica os descontos.</li>
+    <li>O sistema registra a venda e os itens e baixa o estoque.</li>
+    <li>O sistema calcula a comissão (valor líquido × percentual do vendedor) e congela o percentual na venda.</li>
+    <li>O sistema devolve o comprovante com status CONCLUIDA e os alertas de estoque crítico.</li></ol></td></tr>
+  <tr><td>Fluxos alternativos</td><td><b>A1 Sem cliente:</b> a venda é atribuída ao "CONSUMIDOR PADRÃO".<br><b>A2 Consultar histórico:</b> lista paginada por período, vendedor e status; detalhe com itens. O Vendedor vê só as próprias vendas.</td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Caixa de outro operador (403); fechado (422 <code>caixa-fechado</code>); inexistente (404).<br><b>E2</b> Cliente ou produto inexistente/inativo (404).<br><b>E3</b> Sem itens, quantidade fora de 1–10.000 ou forma de pagamento inválida (400).<br><b>E4</b> Estoque insuficiente (422, ver UC05). <b>E5</b> Tentativa de editar ou excluir uma venda (405).</td></tr>
+  <tr><td>Pós-condições</td><td>Venda CONCLUIDA; estoque baixado; valor somado ao caixa e à comissão; venda auditada. Qualquer falha desfaz a operação inteira.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC05 — Validar estoque (automático)</b><span class="tag g">RF-05</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Sistema (incluído no UC04)</td></tr>
+  <tr><td>Pré-condições</td><td>Registro de venda em andamento.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O sistema bloqueia os produtos da venda no banco, para que outra venda não use o mesmo saldo.</li><li>Para cada produto, compara a quantidade total pedida com o estoque atual.</li><li>Se todos têm saldo, a venda prossegue.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Algum produto sem saldo: a venda inteira é interrompida (422 <code>estoque-insuficiente</code>), com a mensagem "Estoque atual é X, mas foi solicitado Y." para cada produto; nada é gravado.</td></tr>
+  <tr><td>Pós-condições</td><td>Estoque nunca negativo; vendas simultâneas do último item resultam em exatamente uma venda por unidade disponível.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC06 — Aplicar cupom de desconto</b><span class="tag g">RF-06</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Vendedor, Gerente (estende o UC04)</td></tr>
+  <tr><td>Pré-condições</td><td>Cupom cadastrado, ativo e dentro do período de validade.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O operador digita o código do cupom na venda.</li><li>O sistema verifica a vigência (início e término inclusivos).</li><li>O sistema calcula o desconto sobre o subtotal: percentual, ou valor fixo limitado ao subtotal.</li><li>O desconto do cupom é aplicado antes de qualquer desconto direto.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Cupom inexistente, inativo, expirado ou ainda não vigente (422 <code>cupom-invalido</code>).</td></tr>
+  <tr><td>Pós-condições</td><td>Cupom vinculado à venda.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC07 — Aplicar desconto direto do gerente</b><span class="tag g">RF-07</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Gerente; Vendedor somente com a senha de um Gerente (estende o UC04)</td></tr>
+  <tr><td>Regras de negócio</td><td>Valor fixo em R$, não percentual. Aplicado sobre o valor que sobra depois do cupom. O total da venda nunca fica negativo.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O operador informa o valor do desconto.</li><li>Se for Vendedor, informa também a senha de autorização de um Gerente ativo.</li><li>O sistema valida a permissão e deduz o valor do total.</li><li>O sistema grava na venda qual Gerente autorizou e registra o desconto na auditoria.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Vendedor sem senha ou com senha inválida (403); senha errada é auditada (<code>AUTORIZACAO_FALHA</code>). <b>E2</b> Desconto maior que o valor restante (422 <code>desconto-invalido</code>). <b>E3</b> Valor negativo (400). <b>E4</b> 5 senhas de gerente erradas pelo mesmo vendedor em 15 min → autorização bloqueada por 15 min (429).</td></tr>
+  <tr><td>Exemplo</td><td>Subtotal R$ 250,00 − cupom 10% (R$ 25,00) − desconto direto R$ 10,00 = <b>R$ 215,00</b>; comissão de 5% = R$ 10,75.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC08 — Cadastrar e gerenciar clientes</b><span class="tag g">RF-08</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Vendedor, Gerente (inativação só pelo Gerente)</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O operador informa tipo (PF ou PJ), CPF/CNPJ e nome/razão social; opcionalmente e-mail, telefone e endereço.</li><li>O sistema valida o documento conforme o tipo (dígitos verificadores) e se ele é único.</li><li>O cliente é gravado como ativo.</li></ol></td></tr>
+  <tr><td>Fluxos alternativos</td><td><b>A1</b> Consulta paginada por documento ou nome. <b>A2</b> Edição completa (PUT) ou parcial (PATCH). <b>A3</b> Inativação lógica pelo Gerente.</td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Documento inválido ou incompatível com o tipo (400). <b>E2</b> Documento já cadastrado (409). <b>E3</b> Alterar ou inativar o "CONSUMIDOR PADRÃO" (422). <b>E4</b> Vendedor tentando inativar (403).</td></tr>
+  <tr><td>Pós-condições</td><td>Cliente disponível para as vendas; cadastros e alterações auditados.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC09 — Consultar estoque e alertas críticos</b><span class="tag g">RF-09</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Vendedor, Gerente</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O operador busca por nome, SKU ou ativa o filtro de estoque crítico.</li><li>O sistema devolve a lista paginada com estoque atual, estoque mínimo e o indicador de alerta (estoque atual ≤ mínimo).</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Produto inexistente (404). <b>E2</b> Página ou limite fora da faixa (400).</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC10 — Gerar relatório de comissões e desempenho</b><span class="tag g">RF-10</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Vendedor (própria comissão), Gerente (todas)</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O usuário informa o período e, se Gerente, o vendedor (opcional).</li><li>O sistema consolida as vendas CONCLUIDAS: quantidade, valor total vendido, percentual de comissão e comissão acumulada.</li><li>O relatório é exibido: um vendedor (objeto) ou todos (lista).</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Vendedor pedindo a comissão de outro (403). <b>E2</b> Data final anterior à inicial (400).</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC11 — Cancelar venda</b><span class="tag g">RF-11</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Gerente</td></tr>
+  <tr><td>Pré-condições</td><td>Venda com status CONCLUIDA.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O Gerente seleciona a venda e informa o motivo.</li><li>O status muda para CANCELADA (vendas não são editadas nem excluídas).</li><li>O sistema devolve os itens ao estoque.</li><li>O sistema registra o cancelamento na auditoria (<code>CANCELAMENTO_VENDA</code>), com motivo e itens estornados.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Vendedor tentando cancelar → "Acesso Negado" (403). <b>E2</b> Venda já cancelada (422 <code>venda-ja-cancelada</code>). <b>E3</b> Motivo ausente ou com menos de 5 caracteres (400). <b>E4</b> Venda inexistente (404).</td></tr>
+  <tr><td>Pós-condições</td><td>Estoque estornado uma única vez; a venda deixa de contar no caixa e nas comissões.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC12 — Gerenciar catálogo de produtos</b><span class="tag g">RF-12</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Gerente</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li><b>Cadastro:</b> SKU, nome, unidade, preço de venda, estoque inicial, estoque mínimo; opcionalmente fornecedor, código de barras, NCM e CEST.</li><li><b>Atualização:</b> total (PUT) ou parcial (PATCH) de preço, descrição e estoque.</li><li><b>Inativação:</b> exclusão lógica, preservando o histórico de vendas.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Preço ≤ 0, estoque negativo, NCM/CEST com tamanho errado (400). <b>E2</b> SKU ou código de barras já cadastrado (409). <b>E3</b> Vendedor tentando alterar (403).</td></tr>
+  <tr><td>Pós-condições</td><td>Mudanças de preço e ajustes de estoque auditados com valor anterior e novo.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC13 — Gerenciar funcionários</b><span class="tag g">RF-13</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Gerente</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O Gerente cadastra o operador: CPF, nome, perfil (VENDEDOR ou GERENTE), percentual de comissão e senha inicial.</li><li>O sistema grava o usuário com a senha em hash.</li><li>O Gerente pode editar nome, perfil e comissão, ou inativar o usuário.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> CPF inválido (400) ou já cadastrado (409). <b>E2</b> Comissão fora de 0–100 (400). <b>E3</b> Gerente tentando inativar a si mesmo ou retirar o próprio perfil de Gerente (422).</td></tr>
+  <tr><td>Pós-condições</td><td>Inativação ou mudança de perfil encerram imediatamente as sessões do funcionário; alterações auditadas.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC14 — Emitir e gerenciar cupons</b><span class="tag g">RF-14</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Gerente</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O Gerente cria o cupom com código, tipo (percentual ou valor fixo), valor e período de vigência.</li><li>O cupom fica disponível para os vendedores durante a vigência.</li><li>O Gerente pode prorrogar, alterar ou inativar o cupom.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Percentual acima de 100 ou término anterior/igual ao início (400). <b>E2</b> Código já existente (409). <b>E3</b> Vendedor tentando emitir (403).</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC15 — Realizar sangria / suprimento de caixa</b><span class="tag g">RF-15</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Gerente</td></tr>
+  <tr><td>Pré-condições</td><td>Caixa ABERTO.</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O Gerente solicita a retirada (sangria) ou a entrada de valor (suprimento).</li><li>Informa o valor e a justificativa.</li><li>O sistema registra a movimentação vinculada ao caixa e ao Gerente e devolve o saldo em dinheiro atualizado.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Sangria maior que o saldo em dinheiro (422 <code>saldo-caixa-insuficiente</code>). <b>E2</b> Caixa fechado (422). <b>E3</b> Justificativa vazia ou valor ≤ 0 (400). <b>E4</b> Vendedor (403).</td></tr>
+  <tr><td>Pós-condições</td><td>Saldo do caixa atualizado; movimentação auditada com saldo anterior e novo.</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>UC16 — Consultar logs de auditoria</b><span class="tag g">RF-16</span></div><div class="corpo"><table>
+  <tr><td>Ator principal</td><td>Gerente</td></tr>
+  <tr><td>Fluxo principal</td><td><ol><li>O Gerente consulta os logs filtrando por período e tipo de ação.</li><li>O sistema exibe o histórico (mais recentes primeiro) com usuário, data/hora, tipo de ação, detalhes e valores anterior/novo.</li></ol></td></tr>
+  <tr><td>Exceções</td><td><b>E1</b> Tipo de ação inexistente (400). <b>E2</b> Vendedor (403).</td></tr>
+</table></div></div>
+</body></html>
