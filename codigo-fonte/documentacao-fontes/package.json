@@ -1,0 +1,15 @@
+{
+  "name": "pdv-web-documentacao",
+  "private": true,
+  "type": "module",
+  "description": "Gera o documento único do PDV Web (documentacao/PDV-Web-Documentacao.pdf) e os prints do roteiro de uso",
+  "scripts": {
+    "prints": "node capturar-telas.mjs",
+    "documento": "node gerar-documento-geral.mjs"
+  },
+  "dependencies": {
+    "marked": "15.0.6",
+    "pdfjs-dist": "4.10.38",
+    "puppeteer-core": "23.11.1"
+  }
+}

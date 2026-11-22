@@ -1,0 +1,292 @@
+[
+  {
+    "id": "01-tela-login",
+    "titulo": "Tela de login",
+    "tipo": "tela",
+    "acao": "Acessar o endereço da aplicação (http://localhost:8080). A raiz redireciona para a tela de login.",
+    "esperado": "Formulário de login com CPF e senha.",
+    "obtido": "",
+    "arquivo": "01-tela-login.png",
+    "aprovado": true
+  },
+  {
+    "id": "02-login-campos-vazios",
+    "titulo": "Login com campos em branco",
+    "tipo": "erro",
+    "acao": "Clicar em Entrar sem preencher CPF nem senha.",
+    "esperado": "A API recusa com HTTP 400 e informa os campos obrigatórios.",
+    "obtido": "Erro de Validação de Dados\nUm ou mais campos contêm valores inválidos.\ncpf: CPF é obrigatório.\nsenha: Senha é obrigatória.\nHTTP 400 · https://api.pdvweb.com/erros/validacao",
+    "arquivo": "02-login-campos-vazios.png",
+    "aprovado": true
+  },
+  {
+    "id": "03-login-senha-invalida",
+    "titulo": "Login com credencial inválida",
+    "tipo": "erro",
+    "acao": "Informar o CPF do gerente (111.444.777-35) com a senha errada \"SenhaErrada1\".",
+    "esperado": "A API recusa com HTTP 401 e mensagem genérica (não revela se o CPF existe).",
+    "obtido": "Não Autenticado\nCPF ou senha inválidos.\nHTTP 401 · https://api.pdvweb.com/erros/nao-autenticado",
+    "arquivo": "03-login-senha-invalida.png",
+    "aprovado": true
+  },
+  {
+    "id": "04-login-sucesso",
+    "titulo": "Login realizado com sucesso (gerente)",
+    "tipo": "sucesso",
+    "acao": "Informar CPF 111.444.777-35 e a senha correta do gerente.",
+    "esperado": "A API devolve o token JWT; a aplicação abre o painel e mostra o nome, o perfil e a validade da sessão.",
+    "obtido": "Login realizado com sucesso\nBem-vindo(a), Gerente Demonstração. Perfil: GERENTE.\nSessão válida até 23/11/2026, 16:18:39\nHTTP 200 · POST /auth/login",
+    "arquivo": "04-login-sucesso.png",
+    "aprovado": true
+  },
+  {
+    "id": "05-produto-cadastro-sucesso",
+    "titulo": "Cadastro de produto correto",
+    "tipo": "sucesso",
+    "acao": "Em Produtos, cadastrar SKU PROD-10, \"Boné Aba Reta\", UN, código 7891000000103, R$ 79,90, estoque 20, mínimo 5.",
+    "esperado": "HTTP 201; o produto aparece na lista com o ID gerado.",
+    "obtido": "Produto cadastrado com sucesso\nBoné Aba Reta (SKU PROD-10) — ID 5, preço R$ 79,90, estoque 20.\nHTTP 201 · POST /produtos",
+    "arquivo": "05-produto-cadastro-sucesso.png",
+    "aprovado": true
+  },
+  {
+    "id": "06-produto-dados-invalidos",
+    "titulo": "Cadastro de produto com dados inválidos",
+    "tipo": "erro",
+    "acao": "Cadastrar produto sem nome, com preço 0, estoque -3 e código de barras \"123\".",
+    "esperado": "HTTP 400; a aplicação lista cada campo recusado e o motivo.",
+    "obtido": "Erro de Validação de Dados\nUm ou mais campos contêm valores inválidos.\ncodigo_barras: Deve conter de 8 a 14 dígitos (EAN/GTIN).\nestoque_atual: O estoque não pode ser negativo.\nnome: Nome é obrigatório.\npreco_venda: O preço de venda deve ser maior que zero.\nHTTP 400 · https://api.pdvweb.com/erros/validacao",
+    "arquivo": "06-produto-dados-invalidos.png",
+    "aprovado": true
+  },
+  {
+    "id": "07-produto-sku-duplicado",
+    "titulo": "Cadastro de produto com SKU repetido",
+    "tipo": "erro",
+    "acao": "Cadastrar outro produto com o SKU PROD-10, que já existe.",
+    "esperado": "HTTP 409 (conflito); nenhum produto duplicado é criado.",
+    "obtido": "Conflito de Dados\nJá existe um produto com este SKU.\nsku: SKU já cadastrado.\nHTTP 409 · https://api.pdvweb.com/erros/conflito",
+    "arquivo": "07-produto-sku-duplicado.png",
+    "aprovado": true
+  },
+  {
+    "id": "08-cliente-cadastro-sucesso",
+    "titulo": "Cadastro de cliente correto",
+    "tipo": "sucesso",
+    "acao": "Em Clientes, cadastrar pessoa física \"Maria Oliveira\", CPF 390.533.447-05, e-mail e cidade.",
+    "esperado": "HTTP 201; o cliente aparece na lista.",
+    "obtido": "Cliente cadastrado com sucesso\nMaria Oliveira (PF 39053344705) — ID 2.\nHTTP 201 · POST /clientes",
+    "arquivo": "08-cliente-cadastro-sucesso.png",
+    "aprovado": true
+  },
+  {
+    "id": "09-cliente-cpf-invalido",
+    "titulo": "Cadastro de cliente com CPF inválido",
+    "tipo": "erro",
+    "acao": "Cadastrar cliente com CPF 123.456.789-00 (dígitos verificadores errados).",
+    "esperado": "A API recusa o documento: o CPF não passa na validação dos dígitos verificadores.",
+    "obtido": "Erro de Validação de Dados\nUm ou mais campos contêm valores inválidos.\ncpf_cnpj: CPF inválido para pessoa física.\nHTTP 400 · https://api.pdvweb.com/erros/validacao",
+    "arquivo": "09-cliente-cpf-invalido.png",
+    "aprovado": true
+  },
+  {
+    "id": "10-login-vendedor",
+    "titulo": "Login realizado com sucesso (vendedor)",
+    "tipo": "sucesso",
+    "acao": "Sair e entrar com o vendedor (CPF 529.982.247-25).",
+    "esperado": "Painel do vendedor; o menu esconde Cupons, Usuários e Auditoria, exclusivos do gerente.",
+    "obtido": "Login realizado com sucesso\nBem-vindo(a), Vendedor Demonstração. Perfil: VENDEDOR.\nSessão válida até 23/11/2026, 16:18:49\nHTTP 200 · POST /auth/login",
+    "arquivo": "10-login-vendedor.png",
+    "aprovado": true
+  },
+  {
+    "id": "11-caixa-valor-negativo",
+    "titulo": "Abertura de caixa com valor negativo",
+    "tipo": "erro",
+    "acao": "Em Caixa, tentar abrir o caixa com suprimento inicial de R$ -50,00.",
+    "esperado": "HTTP 400: o suprimento inicial não pode ser negativo.",
+    "obtido": "Erro de Validação de Dados\nUm ou mais campos contêm valores inválidos.\nsuprimento_inicial: O suprimento inicial não pode ser negativo.\nHTTP 400 · https://api.pdvweb.com/erros/validacao",
+    "arquivo": "11-caixa-valor-negativo.png",
+    "aprovado": true
+  },
+  {
+    "id": "12-caixa-abertura-sucesso",
+    "titulo": "Abertura de caixa",
+    "tipo": "sucesso",
+    "acao": "Abrir o caixa com R$ 200,00 de troco.",
+    "esperado": "HTTP 201; a tela passa a mostrar o caixa aberto e os totais do turno.",
+    "obtido": "Caixa aberto com sucesso\nCaixa #1 aberto em 22/11/2026, 16:18:52 com R$ 200,00 de troco.\nHTTP 201 · POST /caixas/abertura",
+    "arquivo": "12-caixa-abertura-sucesso.png",
+    "aprovado": true
+  },
+  {
+    "id": "13-venda-sucesso-cupom",
+    "titulo": "Venda com cupom de desconto",
+    "tipo": "sucesso",
+    "acao": "Em Nova venda, adicionar 2 × Camiseta P e 1 × Boné Aba Reta, cliente Maria Oliveira, cupom DESCONTO10, pagamento PIX.",
+    "esperado": "HTTP 201; a aplicação mostra subtotal, desconto de 10%, total e a comissão de 5% do vendedor.",
+    "obtido": "Venda #1 registrada com sucesso\nStatus CONCLUIDA em 22/11/2026, 16:18:55.\nSubtotal: R$ 179,70\nDesconto do cupom: R$ 17,97\nTotal pago (PIX): R$ 161,73\nComissão do vendedor: R$ 8,09\nHTTP 201 · POST /vendas",
+    "arquivo": "13-venda-sucesso-cupom.png",
+    "aprovado": true
+  },
+  {
+    "id": "14-venda-estoque-insuficiente",
+    "titulo": "Venda acima do estoque disponível",
+    "tipo": "erro",
+    "acao": "Tentar vender 5 × Tênis 41, que tem apenas 1 unidade em estoque.",
+    "esperado": "HTTP 422; a venda é recusada inteira, nada é baixado do estoque, e a mensagem informa o saldo disponível.",
+    "obtido": "Estoque Insuficiente\nQuantidade solicitada supera o estoque disponível.\nproduto_id: 2: Estoque atual é 1, mas foi solicitado 5.\nHTTP 422 · https://api.pdvweb.com/erros/estoque-insuficiente",
+    "arquivo": "14-venda-estoque-insuficiente.png",
+    "aprovado": true
+  },
+  {
+    "id": "15-venda-cupom-inexistente",
+    "titulo": "Venda com cupom inexistente",
+    "tipo": "erro",
+    "acao": "Vender 1 × Meia informando o cupom \"NATAL50\", que não existe.",
+    "esperado": "HTTP 422; a venda é recusada e a aplicação informa que o cupom é inválido.",
+    "obtido": "Cupom Inválido\nO cupom 'NATAL50' não existe, está inativo ou fora do período de validade.\nHTTP 422 · https://api.pdvweb.com/erros/cupom-invalido",
+    "arquivo": "15-venda-cupom-inexistente.png",
+    "aprovado": true
+  },
+  {
+    "id": "16-venda-desconto-senha-errada",
+    "titulo": "Desconto manual com senha de gerente errada",
+    "tipo": "erro",
+    "acao": "Vender 1 × Teclado Mecânico com desconto de R$ 30,00, informando uma senha de gerente incorreta.",
+    "esperado": "HTTP 403; a venda é recusada: o vendedor só pode dar desconto com a senha válida de um gerente.",
+    "obtido": "Acesso Negado\nDesconto direto exige autorização. Informe senha_autorizacao_gerente válida ou realize o registro via conta de GERENTE.\nsenha_autorizacao_gerente: Credenciais de autorização de gerente inválidas ou ausentes.\nHTTP 403 · https://api.pdvweb.com/erros/acesso-negado",
+    "arquivo": "16-venda-desconto-senha-errada.png",
+    "aprovado": true
+  },
+  {
+    "id": "17-venda-desconto-autorizado",
+    "titulo": "Desconto manual autorizado pelo gerente",
+    "tipo": "sucesso",
+    "acao": "Repetir a venda do Teclado Mecânico com desconto de R$ 30,00, agora com a senha correta do gerente.",
+    "esperado": "HTTP 201; total de R$ 220,00; o gerente que autorizou fica registrado na venda e na auditoria.",
+    "obtido": "Venda #2 registrada com sucesso\nStatus CONCLUIDA em 22/11/2026, 16:19:04.\nSubtotal: R$ 250,00\nDesconto do gerente: R$ 30,00\nTotal pago (CARTAO_CREDITO): R$ 220,00\nComissão do vendedor: R$ 11,00\nHTTP 201 · POST /vendas",
+    "arquivo": "17-venda-desconto-autorizado.png",
+    "aprovado": true
+  },
+  {
+    "id": "18-venda-dinheiro-alerta",
+    "titulo": "Venda em dinheiro com alerta de estoque crítico",
+    "tipo": "sucesso",
+    "acao": "Vender 2 × Meia (estoque 3, mínimo 2) em dinheiro para o consumidor padrão.",
+    "esperado": "HTTP 201; a venda é registrada e a aplicação avisa que a Meia ficou abaixo do estoque mínimo.",
+    "obtido": "Venda #3 registrada com sucesso\nStatus CONCLUIDA em 22/11/2026, 16:19:06.\nSubtotal: R$ 30,00\nTotal pago (DINHEIRO): R$ 30,00\nComissão do vendedor: R$ 1,50\nAlerta: Meia ficou com 1 un. (mínimo 2)\nHTTP 201 · POST /vendas",
+    "arquivo": "18-venda-dinheiro-alerta.png",
+    "aprovado": true
+  },
+  {
+    "id": "19-vendedor-sangria-negada",
+    "titulo": "Vendedor tenta fazer sangria",
+    "tipo": "erro",
+    "acao": "Na tela do Caixa, o vendedor tenta registrar uma sangria de R$ 50,00.",
+    "esperado": "HTTP 403: sangria é exclusiva do gerente.",
+    "obtido": "Acesso Negado\nSeu perfil não tem permissão para executar esta operação.\nHTTP 403 · https://api.pdvweb.com/erros/acesso-negado",
+    "arquivo": "19-vendedor-sangria-negada.png",
+    "aprovado": true
+  },
+  {
+    "id": "20-vendedor-acesso-negado",
+    "titulo": "Vendedor tenta abrir tela de gerente",
+    "tipo": "erro",
+    "acao": "Digitar na barra de endereço a tela de Usuários (#/usuarios), exclusiva do gerente.",
+    "esperado": "HTTP 403 (acesso negado); nenhum dado é exibido.",
+    "obtido": "Acesso Negado\nSeu perfil não tem permissão para executar esta operação.\nHTTP 403 · https://api.pdvweb.com/erros/acesso-negado",
+    "arquivo": "20-vendedor-acesso-negado.png",
+    "aprovado": true
+  },
+  {
+    "id": "21-comissoes-vendedor",
+    "titulo": "Comissões do vendedor",
+    "tipo": "tela",
+    "acao": "Abrir Comissões com o perfil vendedor.",
+    "esperado": "O vendedor vê apenas as próprias vendas e a comissão acumulada (5% do valor vendido).",
+    "obtido": "",
+    "arquivo": "21-comissoes-vendedor.png",
+    "aprovado": true
+  },
+  {
+    "id": "22-cancelamento-sem-motivo",
+    "titulo": "Cancelamento de venda sem motivo",
+    "tipo": "erro",
+    "acao": "Entrar como gerente e, em Vendas, tentar cancelar a venda nº 3 com o motivo \"x\".",
+    "esperado": "HTTP 400: o motivo deve ter entre 5 e 255 caracteres.",
+    "obtido": "Erro de Validação de Dados\nUm ou mais campos contêm valores inválidos.\nmotivo_cancelamento: Deve ter entre 5 e 255 caracteres.\nHTTP 400 · https://api.pdvweb.com/erros/validacao",
+    "arquivo": "22-cancelamento-sem-motivo.png",
+    "aprovado": true
+  },
+  {
+    "id": "23-cancelamento-sucesso",
+    "titulo": "Cancelamento de venda",
+    "tipo": "sucesso",
+    "acao": "Cancelar a venda nº 3 com o motivo \"Cliente desistiu da compra\".",
+    "esperado": "HTTP 200; a venda fica CANCELADA, o estoque é devolvido e a comissão deixa de contar.",
+    "obtido": "Venda cancelada com sucesso\nVenda cancelada com sucesso. Estoque estornado.\nVenda #3 — status CANCELADA. O estoque dos itens foi devolvido.\nHTTP 200 · POST /vendas/3/cancelar",
+    "arquivo": "23-cancelamento-sucesso.png",
+    "aprovado": true
+  },
+  {
+    "id": "24-sangria-acima-do-saldo",
+    "titulo": "Sangria maior que o dinheiro em caixa",
+    "tipo": "erro",
+    "acao": "Com o caixa do gerente aberto com R$ 300,00, registrar sangria de R$ 5.000,00.",
+    "esperado": "HTTP 422: não é possível retirar mais do que o saldo em dinheiro.",
+    "obtido": "Saldo do Caixa Insuficiente\nA sangria de R$ 5000.00 supera o saldo em dinheiro do caixa (R$ 300.00).\nHTTP 422 · https://api.pdvweb.com/erros/saldo-caixa-insuficiente",
+    "arquivo": "24-sangria-acima-do-saldo.png",
+    "aprovado": true
+  },
+  {
+    "id": "25-sangria-sucesso",
+    "titulo": "Sangria registrada",
+    "tipo": "sucesso",
+    "acao": "Registrar sangria de R$ 100,00 com a observação \"Depósito no cofre\".",
+    "esperado": "HTTP 201; o saldo em dinheiro do caixa cai para R$ 200,00.",
+    "obtido": "Sangria registrada com sucesso\nR$ 100,00 — saldo em dinheiro agora: R$ 200,00.\nHTTP 201 · POST /caixas/2/sangria",
+    "arquivo": "25-sangria-sucesso.png",
+    "aprovado": true
+  },
+  {
+    "id": "26-fechamento-caixa",
+    "titulo": "Fechamento de caixa com diferença",
+    "tipo": "sucesso",
+    "acao": "Fechar o caixa informando R$ 190,00 contados em dinheiro (R$ 10,00 a menos que o esperado).",
+    "esperado": "HTTP 200; a aplicação mostra saldo esperado, valor contado e a diferença de R$ -10,00 (falta).",
+    "obtido": "Caixa fechado com sucesso\nCaixa #2 fechado em 22/11/2026, 16:19:20.\nTotal de vendas: R$ 0,00 (dinheiro: R$ 0,00)\nSaldo esperado em dinheiro: R$ 200,00 · contado: R$ 190,00\nDiferença: -R$ 10,00 (falta)\nHTTP 200 · POST /caixas/2/fechamento",
+    "arquivo": "26-fechamento-caixa.png",
+    "aprovado": true
+  },
+  {
+    "id": "27-comissoes-gerente",
+    "titulo": "Relatório de comissões",
+    "tipo": "tela",
+    "acao": "Abrir Comissões com o perfil gerente.",
+    "esperado": "Quadro de todos os vendedores; a venda cancelada não entra no total.",
+    "obtido": "",
+    "arquivo": "27-comissoes-gerente.png",
+    "aprovado": true
+  },
+  {
+    "id": "28-auditoria",
+    "titulo": "Registro de auditoria",
+    "tipo": "tela",
+    "acao": "Abrir Auditoria (exclusivo do gerente).",
+    "esperado": "Lista das ações sensíveis: logins e falhas, cadastros, vendas, desconto autorizado, cancelamento, sangria e fechamento.",
+    "obtido": "",
+    "arquivo": "28-auditoria.png",
+    "aprovado": true
+  },
+  {
+    "id": "29-logout",
+    "titulo": "Logout",
+    "tipo": "sucesso",
+    "acao": "Clicar em Sair.",
+    "esperado": "O token é revogado no servidor e a aplicação volta para o login.",
+    "obtido": "Sessão encerrada\nO token foi revogado no servidor.",
+    "arquivo": "29-logout.png",
+    "aprovado": true
+  }
+]

@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <!-- IntelliJ: escolha "PDV Web (demo)" ao lado do botão Run e clique em ▶.
+       Sobe o modo demonstração (PostgreSQL embarcado + dados de exemplo) e abre o navegador em http://localhost:8080 -->
+  <configuration default="false" name="PDV Web (demo)" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="br.com.empresa.pdv.DemonstracaoPdvWebApi" />
+    <module name="pdv-web-api" />
+    <shortenClasspath name="ARGS_FILE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

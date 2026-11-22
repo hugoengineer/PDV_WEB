@@ -35,7 +35,10 @@ desktop.ini
 node_modules/
 
 # Cópias do banco geradas pelo serviço de backup do Docker
-pdv-web-api/backups/
+**/pdv-web-api/backups/
 
 # CA local do proxy de teste (docker/README.md, seção HTTPS)
-pdv-web-api/ca-local.crt
+**/pdv-web-api/ca-local.crt
+
+# Logs do navegador automatizado (Playwright MCP)
+.playwright-mcp/

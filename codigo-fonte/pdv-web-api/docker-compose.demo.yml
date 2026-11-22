@@ -1,0 +1,31 @@
+# PDV Web - MODO DEMONSTRAÇÃO no Docker, com link público temporário para testes.
+#   docker compose -f docker-compose.demo.yml up -d --build
+#   docker compose -f docker-compose.demo.yml logs tunel | grep trycloudflare   # link público
+#   docker compose -f docker-compose.demo.yml down                               # encerra (dados apagados)
+# Gerente: 111.444.777-35 / Gerente@Demo1   Vendedor: 529.982.247-25 / Vendedor@123   Cupom: DESCONTO10
+name: pdv-web-demo
+services:
+  demo:
+    build:
+      context: .
+      dockerfile: docker/demo/Dockerfile
+    image: pdv-web-demo
+    ports:
+      - "127.0.0.1:8090:8080"   # local: http://localhost:8090 (8080 fica livre para o ambiente de produção)
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health HTTP/1.0\r\n\r\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  # Túnel rápido da Cloudflare: gera um endereço https://<aleatório>.trycloudflare.com sem conta.
+  # O endereço muda a cada reinício do túnel e só funciona enquanto este computador estiver ligado.
+  tunel:
+    image: cloudflare/cloudflared:2025.11.1
+    command: tunnel --no-autoupdate --url http://demo:8080
+    depends_on:
+      demo:
+        condition: service_healthy
+    restart: unless-stopped

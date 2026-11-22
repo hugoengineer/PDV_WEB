@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: pdv-web-api
+        working-directory: codigo-fonte/pdv-web-api
     steps:
       - uses: actions/checkout@v4
 
@@ -35,9 +35,9 @@ jobs:
         with:
           name: relatorios-de-teste
           path: |
-            pdv-web-api/target/surefire-reports/
-            pdv-web-api/target/site/jacoco/
-            pdv-web-api/target/cucumber/
-            pdv-web-api/target/desempenho.csv
-            pdv-web-api/target/evidencias/
+            codigo-fonte/pdv-web-api/target/surefire-reports/
+            codigo-fonte/pdv-web-api/target/site/jacoco/
+            codigo-fonte/pdv-web-api/target/cucumber/
+            codigo-fonte/pdv-web-api/target/desempenho.csv
+            codigo-fonte/pdv-web-api/target/evidencias/
 

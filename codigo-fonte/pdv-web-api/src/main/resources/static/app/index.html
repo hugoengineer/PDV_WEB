@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDV Web</title>
+  <link rel="stylesheet" href="app.css">
+  <script>
+    // aplica o tema salvo antes de desenhar a página (evita piscar claro→escuro)
+    try { const t = localStorage.getItem("pdv.tema"); if (t) document.documentElement.dataset.tema = t; } catch {}
+  </script>
+</head>
+<body>
+  <!-- Tela de login -->
+  <main id="tela-login" class="login" hidden>
+    <button type="button" class="botao-tema" data-alternar-tema>Modo escuro</button>
+    <form id="form-login" class="cartao login-cartao" novalidate>
+      <div class="marca"><span class="logo">PDV</span><div><b>PDV Web</b><small>Sistema de Ponto de Venda</small></div></div>
+      <h1>Entrar</h1>
+      <label>CPF<input name="cpf" id="login-cpf" autocomplete="username" placeholder="000.000.000-00"></label>
+      <label>Senha<input name="senha" id="login-senha" type="password" autocomplete="current-password"></label>
+      <button type="submit" class="primario">Entrar</button>
+      <div id="aviso-login"></div>
+    </form>
+  </main>
+
+  <!-- Aplicação -->
+  <div id="tela-app" class="app" hidden>
+    <aside class="menu">
+      <div class="marca"><span class="logo">PDV</span><div><b>PDV Web</b><small id="menu-usuario"></small></div></div>
+      <nav id="menu-links">
+        <a href="#/inicio">Início</a>
+        <a href="#/venda">Nova venda</a>
+        <a href="#/vendas">Vendas</a>
+        <a href="#/caixa">Caixa</a>
+        <a href="#/produtos">Produtos</a>
+        <a href="#/clientes">Clientes</a>
+        <a href="#/cupons" data-gerente>Cupons</a>
+        <a href="#/comissoes">Comissões</a>
+        <a href="#/usuarios" data-gerente>Usuários</a>
+        <a href="#/auditoria" data-gerente>Auditoria</a>
+      </nav>
+      <div class="menu-rodape">
+        <button type="button" class="botao-tema" data-alternar-tema>Modo escuro</button>
+        <button id="botao-sair" class="sair">Sair</button>
+      </div>
+    </aside>
+    <section class="conteudo">
+      <header class="topo"><h1 id="titulo-tela"></h1><span id="perfil-tela" class="selo"></span></header>
+      <div class="faixa-perfil"></div>
+      <div id="aviso"></div>
+      <div id="tela"></div>
+    </section>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
