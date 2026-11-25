@@ -631,7 +631,7 @@ o detalhe completo de cada um está no código do teste correspondente.</p>
 <td><strong>Aprovado</strong></td>
 </tr>
 </tbody></table>
-<h3>CT-CAN-001 — Vendedor tenta cancelar (acesso negado)</h3>
+<h3>CT-CAN-001 — Vendedor tenta cancelar sem a senha do gerente (acesso negado)</h3>
 <table>
 <thead>
 <tr>
@@ -649,7 +649,7 @@ o detalhe completo de cada um está no código do teste correspondente.</p>
 </tr>
 <tr>
 <td>Passos</td>
-<td><code>POST /vendas/{id}/cancelar</code> com o token do Vendedor</td>
+<td><code>POST /vendas/{id}/cancelar</code> com o token do Vendedor e sem <code>senha_autorizacao_gerente</code> (Ciclo 3: com a senha de um gerente o cancelamento é aceito — CT-CAN-007)</td>
 </tr>
 <tr>
 <td>Resultado esperado</td>
@@ -1680,6 +1680,30 @@ NEG = negativo · SEG = segurança · EXC = exceção · CONC = concorrência ·
 <td>P3</td>
 </tr>
 <tr>
+<td>CT-USR-008</td>
+<td>Gerente redefine a senha: nova entra, antiga não, sessão aberta encerrada; senha fora da auditoria</td>
+<td>UC13 (Ciclo 3)</td>
+<td>POS/SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-USR-009</td>
+<td>Gerente troca o CPF (login): entra pelo novo; CPF inválido 400, repetido 409, senha curta 400; sessão encerrada</td>
+<td>UC13 (Ciclo 3)</td>
+<td>EP/NEG/SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-USR-010</td>
+<td>Mudar só nome ou comissão não derruba a sessão do funcionário</td>
+<td>UC13 (Ciclo 3)</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
 <td>CT-USR-U01 a U06</td>
 <td>Gerente inicial (<code>InicializadorGerente</code>): cria, não duplica, configuração incompleta, CPF inválido, reativa existente, senha de 8 caracteres</td>
 <td>Instalação</td>
@@ -2219,7 +2243,7 @@ NEG = negativo · SEG = segurança · EXC = exceção · CONC = concorrência ·
 </tr>
 <tr>
 <td>CT-CAN-001</td>
-<td>Vendedor tenta cancelar → 403</td>
+<td>Vendedor tenta cancelar sem a senha do gerente → 403</td>
 <td>VAL-02, Regras §3</td>
 <td>SEG</td>
 <td>S</td>
@@ -2264,6 +2288,22 @@ NEG = negativo · SEG = segurança · EXC = exceção · CONC = concorrência ·
 <td>NEG</td>
 <td>I</td>
 <td>P3</td>
+</tr>
+<tr>
+<td>CT-CAN-007</td>
+<td>Vendedor cancela a própria venda com a senha do gerente: estorno, gerente gravado como responsável, auditoria com quem pediu e quem autorizou</td>
+<td>UC11 (Ciclo 3)</td>
+<td>POS/TD</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-CAN-008</td>
+<td>Senha de gerente errada (403, AUTORIZACAO_FALHA) e venda de outro vendedor (403): nada é cancelado</td>
+<td>UC11 (Ciclo 3)</td>
+<td>NEG/SEG</td>
+<td>I</td>
+<td>P1</td>
 </tr>
 <tr>
 <td>CT-HIS-001</td>
@@ -2319,6 +2359,131 @@ NEG = negativo · SEG = segurança · EXC = exceção · CONC = concorrência ·
 <td>UC10, ADR D-04</td>
 <td>EP</td>
 <td>S</td>
+<td>P1</td>
+</tr>
+</tbody></table>
+<h3>4.6.1 Pagamentos divididos, parcelamento e observação — <code>PagamentosIT</code> (Ciclo 3)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Requisito</th>
+<th>Técnica</th>
+<th>Nível</th>
+<th>Prior.</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CT-PAG-001</td>
+<td>Pagamento dividido: R$ 150 dinheiro + R$ 150 crédito em 3x; venda MULTIPLA; parcelas de R$ 50 no detalhe</td>
+<td>UC04, UC17</td>
+<td>POS</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAG-002</td>
+<td>Parcelas não exatas: R$ 100 em 3x = 33,33 + 33,33 + 33,34</td>
+<td>UC04</td>
+<td>VL</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAG-003</td>
+<td>Soma diferente do total (1 centavo a menos ou a mais) → 422 pagamento-divergente; nada gravado</td>
+<td>UC04</td>
+<td>VL/NEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAG-004</td>
+<td>Parcelas acima do máximo do gerente → 422; após liberar, a mesma venda é aceita</td>
+<td>UC04, UC17</td>
+<td>TD</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAG-005</td>
+<td>Dinheiro, PIX e débito não parcelam (422); 13 parcelas → 400</td>
+<td>UC04</td>
+<td>EP/VL</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PAG-006</td>
+<td>Forma única e lista juntas, nenhuma forma, ou MULTIPLA como forma → 400</td>
+<td>UC04</td>
+<td>NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PAG-007</td>
+<td>Caixa soma só a parte em dinheiro: R$ 40 dinheiro + R$ 60 PIX → saldo esperado R$ 140; fechamento sem diferença</td>
+<td>UC03, UC04</td>
+<td>POS</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAG-008</td>
+<td>Contrato original (modalidade_pagamento) continua valendo: um pagamento à vista pelo total</td>
+<td>UC04</td>
+<td>POS</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAG-009</td>
+<td>Comissão sobre o valor da venda, sem efeito das parcelas: 5% de R$ 300 em 10x = R$ 15</td>
+<td>UC04, UC10</td>
+<td>POS</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAG-010</td>
+<td>Prévia calcula subtotal, cupom, desconto e total sem gravar venda nem baixar estoque</td>
+<td>UC04</td>
+<td>POS</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-PAR-001</td>
+<td>Configuração de parcelamento: os dois perfis leem; vendedor não altera (403)</td>
+<td>UC17</td>
+<td>SEG</td>
+<td>I</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>CT-PAR-002</td>
+<td>Alteração auditada; forma à vista (422); limite 0 ou 13 (400)</td>
+<td>UC17</td>
+<td>VL/NEG</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-OBS-001</td>
+<td>Observação gravada (sem espaços nas pontas) e devolvida no detalhe; 501 caracteres → 400</td>
+<td>UC04</td>
+<td>VL</td>
+<td>I</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>CT-DB-014</td>
+<td>Pagamentos e observação não podem ser alterados nem apagados no banco (gatilhos V5)</td>
+<td>UC04, RNF-07</td>
+<td>SEG</td>
+<td>I</td>
 <td>P1</td>
 </tr>
 </tbody></table>

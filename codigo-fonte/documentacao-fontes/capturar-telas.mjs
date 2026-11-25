@@ -23,6 +23,8 @@ fs.mkdirSync(SAIDA, { recursive: true });
 
 const navegador = await puppeteer.launch({ executablePath: CHROME, headless: true, defaultViewport: { width: 1280, height: 800 } });
 const pagina = await navegador.newPage();
+// Prints do documento sempre no tema claro (melhor para impressão), independentemente do sistema operacional
+await pagina.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "light" }]);
 const roteiro = [];
 const espera = ms => new Promise(r => setTimeout(r, ms));
 
@@ -166,25 +168,26 @@ try {
       await enviar("#form-cliente");
     } });
 
-  // ------------------------------------------------ perfil vendedor: caixa e vendas
+  // ------------------------------------------------ perfil vendedor: frente de caixa
   await sair();
   await passo("10-login-vendedor", { titulo: "Login realizado com sucesso (vendedor)", tipo: "sucesso",
     acao: `Sair e entrar com o vendedor (CPF ${VENDEDOR.cpf}).`,
-    esperado: "Painel do vendedor; o menu esconde Cupons, Usuários e Auditoria, exclusivos do gerente.",
+    esperado: "Painel do vendedor em azul; o menu esconde Caixa, Cupons, Funcionários, Configurações e Auditoria, exclusivos do gerente.",
     executar: () => login(VENDEDOR) });
 
-  await irPara("caixa");
+  await irPara("venda");
   await passo("11-caixa-valor-negativo", { titulo: "Abertura de caixa com valor negativo", tipo: "erro",
-    acao: "Em Caixa, tentar abrir o caixa com suprimento inicial de R$ -50,00.",
+    acao: "Na Frente de caixa (sem caixa aberto), tentar abrir o caixa com suprimento inicial de R$ -50,00.",
     esperado: "HTTP 400: o suprimento inicial não pode ser negativo.",
-    executar: async () => { await preencher("#form-abertura", { suprimento_inicial: "-50" }); await enviar("#form-abertura"); } });
+    executar: async () => { await preencher("#tela form", { suprimento_inicial: "-50" }); await enviar("#tela form"); } });
 
-  await passo("12-caixa-abertura-sucesso", { titulo: "Abertura de caixa", tipo: "sucesso",
+  await passo("12-caixa-abertura-sucesso", { titulo: "Abertura de caixa pela Frente de caixa", tipo: "sucesso",
     acao: "Abrir o caixa com R$ 200,00 de troco.",
-    esperado: "HTTP 201; a tela passa a mostrar o caixa aberto e os totais do turno.",
-    executar: async () => { await preencher("#form-abertura", { suprimento_inicial: "200" }); await enviar("#form-abertura"); } });
+    esperado: "HTTP 201; a Frente de caixa mostra o caixa aberto, o botão Fechar caixa e o pedido vazio.",
+    executar: async () => { await preencher("#tela form", { suprimento_inicial: "200" }); await enviar("#tela form"); } });
 
-  async function montarVenda(itens, pagamento) {
+  /** Monta o pedido na Frente de caixa e espera o total exato calculado pela API (prévia). */
+  async function montarPedido(itens, campos = {}) {
     await irPara("venda");
     for (const [sku, quantidade] of itens) {
       const valor = await pagina.$$eval("#venda-produto option", (opcoes, s) => opcoes.find(o => o.textContent.startsWith(s + " "))?.value, sku);
@@ -192,118 +195,211 @@ try {
       await limparEPreencher("#venda-quantidade", quantidade);
       await pagina.click("#venda-adicionar");
     }
-    await preencher("#form-venda", pagamento);
+    await preencher("#form-venda", campos);
+    await pagina.evaluate(() => document.querySelector("#form-venda [name=cupom_codigo]").dispatchEvent(new Event("input")));
+    await espera(700);
+  }
+  const totalCalculado = () => pagina.waitForSelector("#venda-totais .destaque", { timeout: 15000 });
+  /** Inclui um pagamento; sem valor, usa o restante sugerido pela tela. */
+  async function incluirPagamento(forma, valor, parcelas = 1) {
+    await pagina.select("#pag-forma", forma);
+    if (valor != null) await limparEPreencher("#pag-valor", valor);
+    await espera(100);
+    if (parcelas > 1) await pagina.select("#pag-parcelas", String(parcelas));
+    await pagina.click("#pag-incluir");
+    await espera(150);
+  }
+  async function finalizar() {
+    await pagina.$eval("#aviso", el => { el.innerHTML = ""; });
+    await pagina.click("#venda-finalizar");
+    await aguardarMensagem();
+  }
+  async function vender(itens, campos, pagamentos) {
+    await montarPedido(itens, campos);
+    await totalCalculado();
+    for (const p of pagamentos) await incluirPagamento(...p);
+    await finalizar();
   }
 
   await passo("13-venda-sucesso-cupom", { titulo: "Venda com cupom de desconto", tipo: "sucesso",
-    acao: "Em Nova venda, adicionar 2 × Camiseta P e 1 × Boné Aba Reta, cliente Maria Oliveira, cupom DESCONTO10, pagamento PIX.",
-    esperado: "HTTP 201; a aplicação mostra subtotal, desconto de 10%, total e a comissão de 5% do vendedor.",
+    acao: "Adicionar 2 × Camiseta P e 1 × Boné Aba Reta, cliente Maria Oliveira, cupom DESCONTO10, pagamento único em PIX.",
+    esperado: "HTTP 201; a aplicação mostra subtotal, desconto de 10%, total, o pagamento e a comissão de 5% do vendedor.",
     executar: async () => {
-      await montarVenda([["PROD-01", 2], ["PROD-10", 1]], { cupom_codigo: "DESCONTO10", modalidade_pagamento: "PIX" });
+      await montarPedido([["PROD-01", 2], ["PROD-10", 1]], { cupom_codigo: "DESCONTO10" });
       const cliente = await pagina.$$eval("#form-venda [name=cliente_id] option", o => o.find(x => x.textContent.includes("Maria"))?.value);
       await pagina.select("#form-venda [name=cliente_id]", cliente);
-      await enviar("#form-venda");
+      await totalCalculado();
+      await incluirPagamento("PIX", null);
+      await finalizar();
     } });
 
-  await passo("14-venda-estoque-insuficiente", { titulo: "Venda acima do estoque disponível", tipo: "erro",
+  await passo("14-pedido-editado", { titulo: "Pedido editado antes de finalizar", tipo: "tela",
+    acao: "Adicionar 1 × Teclado Mecânico e 3 × Camiseta P; mudar a quantidade das camisetas para 1 e remover o teclado.",
+    esperado: "O pedido fica só com 1 × Camiseta P; subtotal e total a pagar são recalculados a cada mudança; nada é gravado.",
+    executar: async () => {
+      await montarPedido([["PROD-ELE-001", 1], ["PROD-01", 3]]);
+      await pagina.evaluate(() => {
+        const campos = [...document.querySelectorAll(".qtd-item")];
+        const camiseta = campos[1];
+        camiseta.value = "1";
+        camiseta.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await espera(500);
+      await pagina.evaluate(() => document.querySelector("[data-remover]").click());
+      await totalCalculado();
+      await espera(300);
+    } });
+
+  await passo("15-venda-pagamento-dividido", { titulo: "Pagamento dividido: dinheiro + crédito parcelado", tipo: "sucesso",
+    acao: "Vender 1 × Teclado Mecânico (R$ 250,00): incluir R$ 100,00 em dinheiro e o restante, R$ 150,00, no cartão de crédito em 3x sem juros; observação \"Entregar com nota fiscal\".",
+    esperado: "HTTP 201; a venda fica com forma MULTIPLA; o retorno lista R$ 100,00 em dinheiro e R$ 150,00 em 3x de R$ 50,00.",
+    executar: async () => {
+      await montarPedido([["PROD-ELE-001", 1]], { observacao: "Entregar com nota fiscal" });
+      await totalCalculado();
+      await incluirPagamento("DINHEIRO", "100");
+      await incluirPagamento("CARTAO_CREDITO", null, 3);
+      await finalizar();
+    } });
+
+  await passo("16-venda-estoque-insuficiente", { titulo: "Venda acima do estoque disponível", tipo: "erro",
     acao: "Tentar vender 5 × Tênis 41, que tem apenas 1 unidade em estoque.",
     esperado: "HTTP 422; a venda é recusada inteira, nada é baixado do estoque, e a mensagem informa o saldo disponível.",
-    executar: async () => { await montarVenda([["PROD-02", 5]], { modalidade_pagamento: "DINHEIRO" }); await enviar("#form-venda"); } });
+    executar: () => vender([["PROD-02", 5]], {}, [["DINHEIRO", null]]) });
 
-  await passo("15-venda-cupom-inexistente", { titulo: "Venda com cupom inexistente", tipo: "erro",
-    acao: "Vender 1 × Meia informando o cupom \"NATAL50\", que não existe.",
-    esperado: "HTTP 422; a venda é recusada e a aplicação informa que o cupom é inválido.",
-    executar: async () => { await montarVenda([["PROD-03", 1]], { cupom_codigo: "NATAL50", modalidade_pagamento: "DINHEIRO" }); await enviar("#form-venda"); } });
+  await passo("17-venda-cupom-inexistente", { titulo: "Venda com cupom inexistente", tipo: "erro",
+    acao: "Montar o pedido de 1 × Meia informando o cupom \"NATAL50\", que não existe.",
+    esperado: "HTTP 422 já no cálculo do total: o cupom é inválido e a venda não pode ser finalizada.",
+    executar: async () => { await montarPedido([["PROD-03", 1]], { cupom_codigo: "NATAL50" }); await aguardarMensagem("#aviso .mensagem"); } });
 
-  await passo("16-venda-desconto-senha-errada", { titulo: "Desconto manual com senha de gerente errada", tipo: "erro",
+  await passo("18-venda-desconto-senha-errada", { titulo: "Desconto manual com senha de gerente errada", tipo: "erro",
     acao: "Vender 1 × Teclado Mecânico com desconto de R$ 30,00, informando uma senha de gerente incorreta.",
     esperado: "HTTP 403; a venda é recusada: o vendedor só pode dar desconto com a senha válida de um gerente.",
-    executar: async () => {
-      await montarVenda([["PROD-ELE-001", 1]], { desconto_direto_gerente: "30", senha_autorizacao_gerente: "senhaerrada", modalidade_pagamento: "CARTAO_CREDITO" });
-      await enviar("#form-venda");
-    } });
+    executar: () => vender([["PROD-ELE-001", 1]], { desconto_direto_gerente: "30", senha_autorizacao_gerente: "senhaerrada" }, [["CARTAO_CREDITO", null]]) });
 
-  await passo("17-venda-desconto-autorizado", { titulo: "Desconto manual autorizado pelo gerente", tipo: "sucesso",
+  await passo("19-venda-desconto-autorizado", { titulo: "Desconto manual autorizado pelo gerente", tipo: "sucesso",
     acao: "Repetir a venda do Teclado Mecânico com desconto de R$ 30,00, agora com a senha correta do gerente.",
     esperado: "HTTP 201; total de R$ 220,00; o gerente que autorizou fica registrado na venda e na auditoria.",
-    executar: async () => {
-      await montarVenda([["PROD-ELE-001", 1]], { desconto_direto_gerente: "30", senha_autorizacao_gerente: GERENTE.senha, modalidade_pagamento: "CARTAO_CREDITO" });
-      await enviar("#form-venda");
-    } });
+    executar: () => vender([["PROD-ELE-001", 1]], { desconto_direto_gerente: "30", senha_autorizacao_gerente: GERENTE.senha }, [["CARTAO_CREDITO", null]]) });
 
-  await passo("18-venda-dinheiro-alerta", { titulo: "Venda em dinheiro com alerta de estoque crítico", tipo: "sucesso",
+  await passo("20-venda-dinheiro-alerta", { titulo: "Venda em dinheiro com alerta de estoque crítico", tipo: "sucesso",
     acao: "Vender 2 × Meia (estoque 3, mínimo 2) em dinheiro para o consumidor padrão.",
     esperado: "HTTP 201; a venda é registrada e a aplicação avisa que a Meia ficou abaixo do estoque mínimo.",
-    executar: async () => { await montarVenda([["PROD-03", 2]], { modalidade_pagamento: "DINHEIRO" }); await enviar("#form-venda"); } });
+    executar: () => vender([["PROD-03", 2]], {}, [["DINHEIRO", null]]) });
 
-  await irPara("caixa");
-  await passo("19-vendedor-sangria-negada", { titulo: "Vendedor tenta fazer sangria", tipo: "erro",
-    acao: "Na tela do Caixa, o vendedor tenta registrar uma sangria de R$ 50,00.",
-    esperado: "HTTP 403: sangria é exclusiva do gerente.",
-    executar: async () => { await preencher('[data-mov="sangria"]', { valor: "50", observacao: "Retirada" }); await enviar('[data-mov="sangria"]'); } });
+  await passo("21-vendedor-tela-gerente", { titulo: "Vendedor tenta abrir tela de gerente", tipo: "tela",
+    acao: "Digitar na barra de endereço a aba Caixa (#/caixa), exclusiva do gerente.",
+    esperado: "A aba não abre: o vendedor volta ao Início. Sangria e suprimento continuam bloqueados também na API (403).",
+    executar: async () => { await pagina.evaluate(() => { location.hash = "#/caixa"; }); await espera(800); } });
 
-  await passo("20-vendedor-acesso-negado", { titulo: "Vendedor tenta abrir tela de gerente", tipo: "erro",
-    acao: "Digitar na barra de endereço a tela de Usuários (#/usuarios), exclusiva do gerente.",
-    esperado: "HTTP 403 (acesso negado); nenhum dado é exibido.",
+  await irPara("vendas");
+  const vendaMeia = await pagina.$eval("#tela tbody tr td", td => td.textContent.trim());
+  async function abrirDetalhe(numero) {
+    await pagina.evaluate(n => document.querySelector(`[data-ver="${n}"]`).click(), numero);
+    await pagina.waitForSelector("#form-cancelar", { timeout: 15000 });
+    await espera(300);
+  }
+  await passo("22-vendedor-cancela-sem-senha", { titulo: "Vendedor tenta cancelar sem a senha do gerente", tipo: "erro",
+    acao: `Em Vendas, abrir os detalhes da venda nº ${vendaMeia} e cancelar com o motivo "Cliente desistiu da compra", sem senha.`,
+    esperado: "HTTP 403: o vendedor só cancela com a senha de um gerente; a venda continua concluída.",
     executar: async () => {
-      await pagina.$eval("#aviso", el => { el.innerHTML = ""; });
-      await pagina.evaluate(() => { location.hash = "#/usuarios"; });
-      await aguardarMensagem("#aviso .mensagem");
+      await abrirDetalhe(vendaMeia);
+      await preencher("#form-cancelar", { motivo_cancelamento: "Cliente desistiu da compra" });
+      await enviar("#form-cancelar");
+    } });
+
+  await passo("23-vendedor-cancela-com-senha", { titulo: "Cancelamento autorizado pelo gerente", tipo: "sucesso",
+    acao: `Repetir o cancelamento da venda nº ${vendaMeia}, agora com a senha do gerente.`,
+    esperado: "HTTP 200; a venda fica CANCELADA, o estoque volta e o gerente que autorizou fica registrado.",
+    executar: async () => {
+      await preencher("#form-cancelar", { motivo_cancelamento: "Cliente desistiu da compra", senha_autorizacao_gerente: GERENTE.senha });
+      await enviar("#form-cancelar");
     } });
 
   await irPara("comissoes");
-  await passo("21-comissoes-vendedor", { titulo: "Comissões do vendedor", tipo: "tela",
+  await passo("24-comissoes-vendedor", { titulo: "Comissões do vendedor", tipo: "tela",
     acao: "Abrir Comissões com o perfil vendedor.",
-    esperado: "O vendedor vê apenas as próprias vendas e a comissão acumulada (5% do valor vendido).",
+    esperado: "O vendedor vê apenas as próprias vendas e a comissão acumulada (5% do valor vendido); a venda cancelada não conta.",
     executar: async () => {} });
 
-  // ------------------------------------------------ perfil gerente: cancelamento, sangria e fechamento
+  await irPara("venda");
+  await pagina.click("#alternar-fechamento");
+  await espera(300);
+  await passo("25-vendedor-fecha-caixa", { titulo: "Vendedor fecha o próprio caixa", tipo: "sucesso",
+    acao: "Na Frente de caixa, clicar em Fechar caixa e informar R$ 300,00 contados (200 de troco + 100 em dinheiro da venda dividida).",
+    esperado: "HTTP 200; só a parte paga em dinheiro entra no esperado; diferença R$ 0,00 (caixa conferido).",
+    executar: async () => { await preencher("#area-fechamento form", { valor_final_dinheiro: "300" }); await enviar("#area-fechamento form"); } });
+
+  // ------------------------------------------------ perfil gerente
   await sair();
   await login(GERENTE);
   await irPara("vendas");
-  const ultimaVenda = await pagina.$eval("#tela tbody tr td", td => td.textContent.trim());
-  await passo("22-cancelamento-sem-motivo", { titulo: "Cancelamento de venda sem motivo", tipo: "erro",
-    acao: `Entrar como gerente e, em Vendas, tentar cancelar a venda nº ${ultimaVenda} com o motivo "x".`,
+  const vendaConcluida = await pagina.$$eval("#tela tbody tr", linhas =>
+    linhas.find(l => l.textContent.includes("CONCLUIDA"))?.querySelector("td").textContent.trim());
+  await passo("26-cancelamento-sem-motivo", { titulo: "Cancelamento de venda sem motivo", tipo: "erro",
+    acao: `Entrar como gerente (tela roxa) e, em Vendas, tentar cancelar a venda nº ${vendaConcluida} com o motivo "x".`,
     esperado: "HTTP 400: o motivo deve ter entre 5 e 255 caracteres.",
-    executar: async () => { await preencher("#form-cancelar", { venda_id: ultimaVenda, motivo_cancelamento: "x" }); await enviar("#form-cancelar"); } });
-
-  await passo("23-cancelamento-sucesso", { titulo: "Cancelamento de venda", tipo: "sucesso",
-    acao: `Cancelar a venda nº ${ultimaVenda} com o motivo "Cliente desistiu da compra".`,
-    esperado: "HTTP 200; a venda fica CANCELADA, o estoque é devolvido e a comissão deixa de contar.",
-    executar: async () => { await preencher("#form-cancelar", { venda_id: ultimaVenda, motivo_cancelamento: "Cliente desistiu da compra" }); await enviar("#form-cancelar"); } });
+    executar: async () => {
+      await abrirDetalhe(vendaConcluida);
+      await preencher("#form-cancelar", { motivo_cancelamento: "x" });
+      await enviar("#form-cancelar");
+    } });
 
   await irPara("caixa");
-  await preencher("#form-abertura", { suprimento_inicial: "300" });
-  await enviar("#form-abertura");
-  await passo("24-sangria-acima-do-saldo", { titulo: "Sangria maior que o dinheiro em caixa", tipo: "erro",
-    acao: "Com o caixa do gerente aberto com R$ 300,00, registrar sangria de R$ 5.000,00.",
+  await preencher("#tela form", { suprimento_inicial: "300" });
+  await enviar("#tela form");
+  await passo("27-sangria-acima-do-saldo", { titulo: "Sangria maior que o dinheiro em caixa", tipo: "erro",
+    acao: "Na aba Caixa (só do gerente), com o caixa aberto com R$ 300,00, registrar sangria de R$ 5.000,00.",
     esperado: "HTTP 422: não é possível retirar mais do que o saldo em dinheiro.",
     executar: async () => { await preencher('[data-mov="sangria"]', { valor: "5000", observacao: "Teste de retirada" }); await enviar('[data-mov="sangria"]'); } });
 
-  await passo("25-sangria-sucesso", { titulo: "Sangria registrada", tipo: "sucesso",
+  await passo("28-sangria-sucesso", { titulo: "Sangria registrada", tipo: "sucesso",
     acao: "Registrar sangria de R$ 100,00 com a observação \"Depósito no cofre\".",
     esperado: "HTTP 201; o saldo em dinheiro do caixa cai para R$ 200,00.",
     executar: async () => { await preencher('[data-mov="sangria"]', { valor: "100", observacao: "Depósito no cofre" }); await enviar('[data-mov="sangria"]'); } });
 
-  await passo("26-fechamento-caixa", { titulo: "Fechamento de caixa com diferença", tipo: "sucesso",
+  await passo("29-fechamento-caixa", { titulo: "Fechamento de caixa com diferença", tipo: "sucesso",
     acao: "Fechar o caixa informando R$ 190,00 contados em dinheiro (R$ 10,00 a menos que o esperado).",
     esperado: "HTTP 200; a aplicação mostra saldo esperado, valor contado e a diferença de R$ -10,00 (falta).",
-    executar: async () => { await preencher("#form-fechamento", { valor_final_dinheiro: "190" }); await enviar("#form-fechamento"); } });
+    executar: async () => { await preencher("#tela form.cartao:last-of-type", { valor_final_dinheiro: "190" }); await enviar("#tela form.cartao:last-of-type"); } });
+
+  await irPara("configuracoes");
+  await passo("30-parcelamento-configurado", { titulo: "Gerente limita o parcelamento do crédito", tipo: "sucesso",
+    acao: "Em Configurações, definir o crédito em até 6x sem juros e manter o crediário em 12x.",
+    esperado: "HTTP 200; a alteração é auditada e a Frente de caixa passa a oferecer de 1x a 6x no crédito.",
+    executar: async () => { await preencher("#form-parcelamento", { CARTAO_CREDITO: "6" }); await enviar("#form-parcelamento"); } });
+
+  await irPara("usuarios");
+  await passo("31-ficha-funcionario", { titulo: "Ficha do funcionário", tipo: "tela",
+    acao: "Em Funcionários, clicar em \"Ver e editar\" no vendedor.",
+    esperado: "Dados do vendedor, vendas concluídas, total vendido, comissão acumulada, últimas vendas e o formulário de edição.",
+    executar: async () => {
+      await pagina.evaluate(cpf => {
+        const linha = [...document.querySelectorAll("#tela tbody tr")].find(l => l.textContent.replace(/\D/g, "").includes(cpf.replace(/\D/g, "")));
+        linha.querySelector("[data-ver-usuario]").click();
+      }, VENDEDOR.cpf);
+      await pagina.waitForSelector("#form-edicao", { timeout: 15000 });
+      await espera(500);
+    } });
+
+  await passo("32-funcionario-editado", { titulo: "Gerente altera comissão e redefine a senha", tipo: "sucesso",
+    acao: "Na ficha do vendedor, mudar a comissão para 6% e definir uma nova senha.",
+    esperado: "HTTP 200; a senha não é exibida nem auditada e as sessões abertas do vendedor são encerradas.",
+    executar: async () => { await preencher("#form-edicao", { percentual_comissao: "6", nova_senha: "NovaSenha@2026" }); await enviar("#form-edicao"); } });
 
   await irPara("comissoes");
-  await passo("27-comissoes-gerente", { titulo: "Relatório de comissões", tipo: "tela",
+  await passo("33-comissoes-gerente", { titulo: "Relatório de comissões", tipo: "tela",
     acao: "Abrir Comissões com o perfil gerente.",
     esperado: "Quadro de todos os vendedores; a venda cancelada não entra no total.",
     executar: async () => {} });
 
   await irPara("auditoria");
-  await passo("28-auditoria", { titulo: "Registro de auditoria", tipo: "tela",
+  await passo("34-auditoria", { titulo: "Registro de auditoria", tipo: "tela",
     acao: "Abrir Auditoria (exclusivo do gerente).",
-    esperado: "Lista das ações sensíveis: logins e falhas, cadastros, vendas, desconto autorizado, cancelamento, sangria e fechamento.",
+    esperado: "Lista das ações sensíveis: logins e falhas, cadastros, vendas com as formas de pagamento, desconto autorizado, cancelamento com autorização, sangria, fechamento, parcelamento e alteração de funcionário.",
     executar: async () => {} });
 
   await sair();
-  await passo("29-logout", { titulo: "Logout", tipo: "sucesso",
+  await passo("35-logout", { titulo: "Logout", tipo: "sucesso",
     acao: "Clicar em Sair.",
     esperado: "O token é revogado no servidor e a aplicação volta para o login.",
     executar: async () => {} });

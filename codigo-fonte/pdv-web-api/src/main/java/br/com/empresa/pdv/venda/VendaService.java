@@ -48,6 +48,10 @@ import br.com.empresa.pdv.venda.VendaDtos.AlertaEstoque;
 import br.com.empresa.pdv.venda.VendaDtos.ComissaoResposta;
 import br.com.empresa.pdv.venda.VendaDtos.ItemDetalhe;
 import br.com.empresa.pdv.venda.VendaDtos.ItemRequisicao;
+import br.com.empresa.pdv.venda.VendaDtos.PagamentoDetalhe;
+import br.com.empresa.pdv.venda.VendaDtos.PagamentoRequisicao;
+import br.com.empresa.pdv.venda.VendaDtos.PreviaRequisicao;
+import br.com.empresa.pdv.venda.VendaDtos.PreviaResposta;
 import br.com.empresa.pdv.venda.VendaDtos.VendaDetalhe;
 import br.com.empresa.pdv.venda.VendaDtos.VendaRegistradaResposta;
 import br.com.empresa.pdv.venda.VendaDtos.VendaRequisicao;
@@ -58,6 +62,8 @@ public class VendaService {
 
     static final String DETALHE_DESCONTO_SEM_AUTORIZACAO = "Desconto direto exige autorização. Informe "
             + "senha_autorizacao_gerente válida ou realize o registro via conta de GERENTE.";
+    static final String DETALHE_CANCELAMENTO_SEM_AUTORIZACAO = "O cancelamento pelo vendedor exige autorização. "
+            + "Informe senha_autorizacao_gerente válida ou realize o cancelamento via conta de GERENTE.";
     private static final OffsetDateTime INICIO_DOS_TEMPOS = OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
     private static final OffsetDateTime FIM_DOS_TEMPOS = OffsetDateTime.of(9999, 12, 31, 0, 0, 0, 0, ZoneOffset.UTC);
 
@@ -73,12 +79,15 @@ public class VendaService {
     private final Relogio relogio;
     private final LimitadorDeTentativas limitador;
     private final BaseComissao baseComissao;
+    private final ConfiguracaoParcelamentoRepository parcelamentos;
 
     public VendaService(VendaRepository vendas, ProdutoRepository produtos, ClienteRepository clientes,
                         ClienteService clienteService, UsuarioRepository usuarios, CaixaService caixaService,
                         CupomService cupomService, PasswordEncoder passwordEncoder, AuditoriaService auditoria,
                         Relogio relogio, LimitadorDeTentativas limitador,
-                        @Value("${pdv.comissao.base:LIQUIDO}") BaseComissao baseComissao) {
+                        @Value("${pdv.comissao.base:LIQUIDO}") BaseComissao baseComissao,
+                        ConfiguracaoParcelamentoRepository parcelamentos) {
+        this.parcelamentos = parcelamentos;
         this.limitador = limitador;
         this.baseComissao = baseComissao;
         this.vendas = vendas;
@@ -109,7 +118,8 @@ public class VendaService {
         // UC07: o desconto direto exige perfil GERENTE ou a senha de um gerente ativo
         BigDecimal descontoGerente = Dinheiro.valorOuZero(req.descontoDiretoGerente());
         Long gerenteAutorizador = descontoGerente.signum() > 0
-                ? autorizarDescontoDireto(logado, req.senhaAutorizacaoGerente())
+                ? autorizarPorGerente(logado, req.senhaAutorizacaoGerente(), "solicitar desconto direto",
+                        DETALHE_DESCONTO_SEM_AUTORIZACAO)
                 : null;
 
         // UC05 / VAL-01: bloqueia os produtos e confere o saldo de todos antes de baixar qualquer um
@@ -128,8 +138,17 @@ public class VendaService {
         ResumoFinanceiro resumo = CalculadoraVenda.calcular(subtotal, descontoCupom, descontoGerente,
                 operador.getPercentualComissao(), baseComissao);
 
-        Venda venda = new Venda(operador.getId(), cliente.getId(), caixa.getId(), req.modalidadePagamento(),
-                relogio.agora());
+        // Forma(s) de pagamento: a soma tem de fechar exatamente com o total calculado pelo servidor
+        List<PagamentoRequisicao> pagamentos = resolverPagamentos(req.modalidadePagamento(), req.pagamentos(),
+                resumo.total());
+        ModalidadePagamento modalidade = pagamentos.size() == 1
+                ? pagamentos.getFirst().modalidadePagamento()
+                : ModalidadePagamento.MULTIPLA;
+
+        Venda venda = new Venda(operador.getId(), cliente.getId(), caixa.getId(), modalidade,
+                normalizarObservacao(req.observacao()), relogio.agora());
+        pagamentos.forEach(p -> venda.adicionarPagamento(p.modalidadePagamento(), Dinheiro.arredondar(p.valor()),
+                p.parcelas() == null ? 1 : p.parcelas()));
         quantidades.forEach((produtoId, quantidade) -> {
             Produto produto = produtosBloqueados.get(produtoId);
             venda.adicionarItem(produtoId, quantidade, produto.getPrecoVenda());
@@ -140,7 +159,7 @@ public class VendaService {
 
         auditoria.registrar(operador.getId(), TipoAcao.VENDA_REGISTRO, "VENDA", salva.getId(),
                 "Venda " + salva.getId() + " registrada: " + quantidades.size() + " produto(s), total R$ "
-                        + resumo.total() + " (" + req.modalidadePagamento() + ").");
+                        + resumo.total() + " (" + descreverPagamentos(salva) + ").");
         if (gerenteAutorizador != null) {
             auditoria.registrar(operador.getId(), TipoAcao.DESCONTO_GERENTE, "VENDA", salva.getId(),
                     "Desconto direto de R$ " + resumo.descontoGerente() + " autorizado pelo gerente ID "
@@ -153,14 +172,113 @@ public class VendaService {
                 .toList();
         return new VendaRegistradaResposta(salva.getId(), resumo.subtotal(), resumo.descontoCupom(),
                 resumo.descontoGerente(), resumo.total(), salva.getModalidadePagamento(), salva.getStatus(),
-                resumo.comissao(), relogio.noFuso(salva.getDataVenda()), alertas);
+                resumo.comissao(), relogio.noFuso(salva.getDataVenda()), alertas,
+                salva.getPagamentos().stream().map(PagamentoDetalhe::de).toList(), salva.getObservacao());
     }
 
-    /** UC11 — Cancelar Venda (Gerente): estorna o estoque e retira a venda dos totais financeiros. */
+    /**
+     * Prévia dos totais (subtotal, descontos e total a pagar) sem gravar nada: a tela usa o total exato
+     * para dividir o pagamento. A senha do gerente só é conferida ao finalizar.
+     */
+    @Transactional(readOnly = true)
+    public PreviaResposta previa(PreviaRequisicao req) {
+        Map<Long, Integer> quantidades = agruparQuantidades(req.itens());
+        Map<Long, Produto> encontrados = produtos.findAllById(quantidades.keySet()).stream()
+                .collect(Collectors.toMap(Produto::getId, Function.identity()));
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (Map.Entry<Long, Integer> e : quantidades.entrySet()) {
+            Produto produto = encontrados.get(e.getKey());
+            if (produto == null || !produto.isAtivo()) {
+                throw ApiException.naoEncontrado("Produto", e.getKey());
+            }
+            subtotal = subtotal.add(produto.getPrecoVenda().multiply(BigDecimal.valueOf(e.getValue())));
+        }
+        Cupom cupom = req.cupomCodigo() == null || req.cupomCodigo().isBlank()
+                ? null
+                : cupomService.obterVigente(req.cupomCodigo());
+        BigDecimal descontoCupom = cupom == null ? BigDecimal.ZERO : cupom.calcularDesconto(Dinheiro.arredondar(subtotal));
+        ResumoFinanceiro resumo = CalculadoraVenda.calcular(subtotal, descontoCupom,
+                Dinheiro.valorOuZero(req.descontoDiretoGerente()), BigDecimal.ZERO);
+        return new PreviaResposta(resumo.subtotal(), resumo.descontoCupom(), resumo.descontoGerente(), resumo.total());
+    }
+
+    /**
+     * Converte o pedido de pagamento numa lista conferida: forma única (contrato original, à vista e pelo total)
+     * ou várias formas, cuja soma deve ser exatamente o total da venda. Parcelas sem juros só em crédito e
+     * crediário, até o limite configurado pelo gerente.
+     */
+    List<PagamentoRequisicao> resolverPagamentos(ModalidadePagamento unica, List<PagamentoRequisicao> lista,
+                                                 BigDecimal total) {
+        boolean temLista = lista != null && !lista.isEmpty();
+        if (unica != null && temLista) {
+            throw ApiException.validacao("pagamentos", "Informe modalidade_pagamento ou pagamentos, não os dois.");
+        }
+        if (unica == null && !temLista) {
+            throw ApiException.validacao("modalidade_pagamento", "Informe a forma de pagamento.");
+        }
+        List<PagamentoRequisicao> pagamentos = temLista
+                ? lista
+                : List.of(new PagamentoRequisicao(unica, total, 1));
+        BigDecimal soma = BigDecimal.ZERO;
+        for (int i = 0; i < pagamentos.size(); i++) {
+            PagamentoRequisicao p = pagamentos.get(i);
+            String campo = temLista ? "pagamentos[" + i + "]" : "modalidade_pagamento";
+            if (p.modalidadePagamento() == ModalidadePagamento.MULTIPLA) {
+                throw ApiException.validacao(campo,
+                        "MULTIPLA não é uma forma de pagamento; informe cada parte em pagamentos.");
+            }
+            if (total.signum() > 0 && p.valor().signum() <= 0) {
+                throw ApiException.validacao(campo + ".valor", "O valor deve ser maior que zero.");
+            }
+            int parcelas = p.parcelas() == null ? 1 : p.parcelas();
+            if (parcelas > 1) {
+                if (!p.modalidadePagamento().permiteParcelamento()) {
+                    throw parcelamentoInvalido(p.modalidadePagamento() + " é sempre à vista (1 parcela).");
+                }
+                int maximo = parcelamentos.findById(p.modalidadePagamento())
+                        .map(ConfiguracaoParcelamento::getMaxParcelas).orElse(1);
+                if (parcelas > maximo) {
+                    throw parcelamentoInvalido("O máximo para " + p.modalidadePagamento() + " é " + maximo
+                            + "x sem juros; foram pedidas " + parcelas + "x.");
+                }
+            }
+            soma = soma.add(Dinheiro.arredondar(p.valor()));
+        }
+        if (soma.compareTo(total) != 0) {
+            throw ApiException.regraNegocio("pagamento-divergente", "Pagamento Divergente",
+                    "A soma dos pagamentos (R$ " + soma + ") deve ser igual ao total da venda (R$ " + total
+                            + "). Diferença: R$ " + total.subtract(soma) + ".");
+        }
+        return pagamentos;
+    }
+
+    private static ApiException parcelamentoInvalido(String detalhe) {
+        return ApiException.regraNegocio("parcelamento-invalido", "Parcelamento Inválido", detalhe);
+    }
+
+    private static String normalizarObservacao(String observacao) {
+        return observacao == null || observacao.isBlank() ? null : observacao.trim();
+    }
+
+    private static String descreverPagamentos(Venda venda) {
+        return venda.getPagamentos().stream()
+                .map(p -> p.getModalidadePagamento() + " R$ " + p.getValor()
+                        + (p.getParcelas() > 1 ? " em " + p.getParcelas() + "x" : ""))
+                .collect(Collectors.joining(" + "));
+    }
+
+    /**
+     * UC11 — Cancelar Venda: estorna o estoque e retira a venda dos totais financeiros.
+     * O Gerente cancela qualquer venda. O Vendedor cancela só as próprias vendas e com a senha de um gerente ativo;
+     * o gerente que autorizou fica gravado como responsável pelo cancelamento.
+     */
     @Transactional
-    public void cancelar(Long vendaId, String motivo) {
-        UsuarioLogado gerente = UsuarioLogado.atual();
+    public void cancelar(Long vendaId, String motivo, String senhaGerente) {
+        UsuarioLogado logado = UsuarioLogado.atual();
         Venda venda = vendas.bloquear(vendaId).orElseThrow(() -> ApiException.naoEncontrado("Venda", vendaId));
+        if (!logado.isGerente() && !venda.getUsuarioId().equals(logado.id())) {
+            throw ApiException.acessoNegado("O vendedor só pode cancelar as próprias vendas.");
+        }
         if (venda.isCancelada()) {
             throw ApiException.regraNegocio("venda-ja-cancelada", "Venda Já Cancelada",
                     "A venda " + vendaId + " já foi cancelada anteriormente.");
@@ -169,14 +287,18 @@ public class VendaService {
         venda.getItens().forEach(item -> quantidades.merge(item.getProdutoId(), item.getQuantidade(), Integer::sum));
         produtos.bloquearPorIds(quantidades.keySet())
                 .forEach(produto -> produto.estornarEstoque(quantidades.get(produto.getId())));
-        venda.cancelar(motivo.trim(), gerente.id(), relogio.agora());
+        Long gerenteResponsavel = autorizarPorGerente(logado, senhaGerente, "cancelar a venda " + vendaId,
+                DETALHE_CANCELAMENTO_SEM_AUTORIZACAO);
+        venda.cancelar(motivo.trim(), gerenteResponsavel, relogio.agora());
 
         String itensEstornados = quantidades.entrySet().stream()
                 .map(e -> "produto " + e.getKey() + " +" + e.getValue())
                 .collect(Collectors.joining(", "));
-        auditoria.registrar(gerente.id(), TipoAcao.CANCELAMENTO_VENDA, "VENDA", vendaId,
+        String autorizacao = logado.isGerente() ? "" : " Solicitado pelo vendedor ID " + logado.id()
+                + ", autorizado pelo gerente ID " + gerenteResponsavel + ".";
+        auditoria.registrar(logado.id(), TipoAcao.CANCELAMENTO_VENDA, "VENDA", vendaId,
                 "Venda " + vendaId + " cancelada. Motivo: " + venda.getMotivoCancelamento()
-                        + ". Estorno: " + itensEstornados + ".",
+                        + ". Estorno: " + itensEstornados + "." + autorizacao,
                 StatusVenda.CONCLUIDA.name(), StatusVenda.CANCELADA.name());
     }
 
@@ -233,7 +355,9 @@ public class VendaService {
                 venda.getDescontoCupom(), venda.getDescontoGerente(), venda.getValorTotal(),
                 venda.getModalidadePagamento(), venda.getStatus(), venda.getPercentualComissao(),
                 venda.getValorComissao(), venda.getCupomId(), venda.getGerenteAutorizadorId(),
-                venda.getMotivoCancelamento(), relogio.noFuso(venda.getDataCancelamento()), itens);
+                venda.getMotivoCancelamento(), relogio.noFuso(venda.getDataCancelamento()), itens,
+                venda.getPagamentos().stream().map(PagamentoDetalhe::de).toList(), venda.getObservacao(),
+                venda.getUsuarioCancelamentoId());
     }
 
     /**
@@ -298,10 +422,10 @@ public class VendaService {
     }
 
     /**
-     * Vendedor precisa da senha de um gerente ativo. Senhas erradas são contadas por vendedor: ao atingir
-     * o limite, novas tentativas recebem 429 por um período (impede adivinhar a senha pela tela de venda).
+     * Vendedor precisa da senha de um gerente ativo (desconto direto e cancelamento). Senhas erradas são contadas
+     * por vendedor: ao atingir o limite, novas tentativas recebem 429 por um período (impede adivinhar a senha).
      */
-    private Long autorizarDescontoDireto(UsuarioLogado logado, String senhaGerente) {
+    private Long autorizarPorGerente(UsuarioLogado logado, String senhaGerente, String acao, String detalheNegado) {
         if (logado.isGerente()) {
             return logado.id();
         }
@@ -316,10 +440,10 @@ public class VendaService {
             }
             boolean bloqueou = limitador.registrarFalha(chave, limitador.propriedades().maxFalhasSenhaGerente());
             auditoria.registrarIsolado(logado.id(), TipoAcao.AUTORIZACAO_FALHA, "USUARIO", logado.id(),
-                    "Senha de gerente incorreta ao solicitar desconto direto"
+                    "Senha de gerente incorreta ao " + acao
                             + (bloqueou ? "; autorização bloqueada temporariamente por excesso de tentativas." : "."));
         }
-        throw new ApiException(HttpStatus.FORBIDDEN, "acesso-negado", "Acesso Negado", DETALHE_DESCONTO_SEM_AUTORIZACAO,
+        throw new ApiException(HttpStatus.FORBIDDEN, "acesso-negado", "Acesso Negado", detalheNegado,
                 List.of(new ParametroInvalido("senha_autorizacao_gerente",
                         "Credenciais de autorização de gerente inválidas ou ausentes.")));
     }

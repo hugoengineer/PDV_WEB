@@ -1252,6 +1252,62 @@ sem ela. <strong>O que ainda separa o backend da produção é infraestrutura, n
 medir a carga no ambiente alvo (PEND-04) e instalar o certificado TLS no proxy (PEND-07). As sessões exploratórias
 (PEND-01) e o reteste do desktop (PEND-02) seguem abertos e não bloqueiam.</p>
 <hr>
+<h2>13. Ciclo 3 — Operação de loja (25/11/2026)</h2>
+<p><strong>Objetivo:</strong> atender aos pedidos do cliente para a frente de caixa, conferidos contra os requisitos antes de implementar
+(o que divergia foi aprovado por ele e virou requisito: RF-03, RF-04, RF-11, RF-13 alterados e RF-17 novo).
+<strong>Execução:</strong> 25/11/2026 · <code>./mvnw clean verify</code> · <strong>342/342</strong> · BUILD SUCCESS · cobertura 96,9% linhas / 87,7% ramos.</p>
+<table>
+<thead>
+<tr>
+<th>Mudança</th>
+<th>Casos</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Pagamento dividido em várias formas, soma exata ao centavo, contrato original preservado, prévia do total</td>
+<td>CT-PAG-001, 003, 006, 008, 010</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Parcelamento sem juros (crédito e crediário) com máximo definido pelo gerente</td>
+<td>CT-PAG-002, 004, 005, 009, CT-PAR-001, 002</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Fechamento de caixa soma só a parte paga em dinheiro</td>
+<td>CT-PAG-007</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Observação do pedido; pagamentos e observação imutáveis no banco (V5)</td>
+<td>CT-OBS-001, CT-DB-014, CT-DB-006</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Vendedor cancela a própria venda com a senha do gerente</td>
+<td>CT-CAN-001 (revisto), 007, 008</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Gerente redefine senha e troca CPF do funcionário; sessões encerradas</td>
+<td>CT-USR-008, 009, 010</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Matriz RBAC: <code>PUT /configuracoes/parcelamento</code> entra no lugar do cancelamento (agora permitido ao vendedor com senha)</td>
+<td>CT-SEG-005</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Roteiro de uso pela interface (Frente de caixa, pagamento dividido, cancelamento autorizado, ficha do funcionário, parcelamento)</td>
+<td>35 passos (eram 29)</td>
+<td>✅ 35/35</td>
+</tr>
+</tbody></table>
+<p><strong>Ajustes em testes existentes:</strong> CT-DB-006 e o teste de papéis do banco passaram a esperar 5 migrações; CT-CAN-001 agora testa o vendedor <em>sem</em> a senha do gerente.
+<strong>Não repetidos neste ciclo:</strong> mutação (PIT) e carga com 20 operadores — o código alterado é coberto pelos testes de integração acima.</p>
+
 <h2>12. Ciclo 1.2 — Banco de dados</h2>
 <p><strong>Objetivo:</strong> fazer do banco a última barreira — o histórico financeiro e de auditoria não pode ser adulterado nem por
 erro da aplicação nem por SQL direto — e preparar o ambiente Docker de produção.

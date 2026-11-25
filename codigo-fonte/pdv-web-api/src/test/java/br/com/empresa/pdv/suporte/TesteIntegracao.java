@@ -60,9 +60,12 @@ public abstract class TesteIntegracao {
 
     @BeforeEach
     protected void prepararBanco() throws Exception {
-        jdbc.execute("TRUNCATE itens_venda, vendas, movimentacoes_caixa, caixas, cupons_desconto, logs_auditoria, "
-                + "tokens_revogados, tentativas_acesso, "
+        jdbc.execute("TRUNCATE itens_venda, venda_pagamentos, vendas, movimentacoes_caixa, caixas, cupons_desconto, "
+                + "logs_auditoria, tokens_revogados, tentativas_acesso, configuracao_parcelamento, "
                 + "clientes, produtos, usuarios RESTART IDENTITY CASCADE");
+        // Valores de fábrica da migração V5 (o TRUNCATE em usuarios também esvazia esta tabela)
+        jdbc.update("INSERT INTO configuracao_parcelamento (modalidade_pagamento, max_parcelas) "
+                + "VALUES ('CARTAO_CREDITO', 12), ('CREDIARIO', 12)");
         jdbc.update("INSERT INTO clientes (tipo, cpf_cnpj, nome_razao_social) VALUES ('PF', '00000000000', 'CONSUMIDOR PADRÃO')");
         jdbc.update("INSERT INTO usuarios (cpf, nome, senha_hash, perfil, percentual_comissao) VALUES (?, ?, ?, 'GERENTE', 0)",
                 CPF_GERENTE, "Gerente de Teste", HASH_GERENTE);

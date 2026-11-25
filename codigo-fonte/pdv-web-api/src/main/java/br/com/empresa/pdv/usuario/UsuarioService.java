@@ -66,12 +66,12 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioResposta substituir(Long id, UsuarioAtualizacao dados) {
-        return aplicar(id, dados.nome(), dados.perfil(), dados.percentualComissao());
+        return aplicar(id, dados.nome(), dados.perfil(), dados.percentualComissao(), null, null);
     }
 
     @Transactional
     public UsuarioResposta atualizarParcial(Long id, UsuarioPatch dados) {
-        return aplicar(id, dados.nome(), dados.perfil(), dados.percentualComissao());
+        return aplicar(id, dados.nome(), dados.perfil(), dados.percentualComissao(), dados.cpf(), dados.novaSenha());
     }
 
     @Transactional
@@ -88,10 +88,26 @@ public class UsuarioService {
                 "Funcionário " + usuario.getNome() + " inativado (soft delete).");
     }
 
-    private UsuarioResposta aplicar(Long id, String nome, Perfil perfil, BigDecimal comissao) {
+    private UsuarioResposta aplicar(Long id, String nome, Perfil perfil, BigDecimal comissao, String cpfNovo,
+                                    String novaSenha) {
         Usuario usuario = obter(id);
         UsuarioLogado logado = UsuarioLogado.atual();
         String antes = descrever(usuario);
+        boolean encerrarSessoes = false;
+
+        if (cpfNovo != null) {
+            String cpf = Documentos.somenteDigitos(cpfNovo);
+            if (!Documentos.cpfValido(cpf)) {
+                throw ApiException.validacao("cpf", "CPF inválido.");
+            }
+            if (!cpf.equals(usuario.getCpf())) {
+                if (repository.existsByCpf(cpf)) {
+                    throw ApiException.conflito("Já existe um usuário com este CPF.", "cpf", "CPF já cadastrado.");
+                }
+                usuario.setCpf(cpf);
+                encerrarSessoes = true;
+            }
+        }
 
         if (perfil != null && perfil != usuario.getPerfil() && usuario.isGerente()
                 && usuario.getId().equals(logado.id())) {
@@ -108,9 +124,19 @@ public class UsuarioService {
         if (comissao != null) {
             usuario.setPercentualComissao(Dinheiro.arredondar(comissao));
         }
+        if (novaSenha != null) {
+            usuario.setSenhaHash(passwordEncoder.encode(novaSenha));
+            encerrarSessoes = true;
+        }
         usuario.setAtualizadoEm(relogio.agora());
+        if (encerrarSessoes) {
+            usuario.encerrarSessoes();
+        }
         auditoria.registrar(logado.id(), TipoAcao.USUARIO_UPDATE, "USUARIO", id,
-                "Dados do funcionário " + usuario.getNome() + " alterados.", antes, descrever(usuario));
+                "Dados do funcionário " + usuario.getNome() + " alterados"
+                        + (novaSenha != null ? "; senha redefinida pelo gerente" : "")
+                        + (encerrarSessoes ? "; sessões abertas encerradas" : "") + ".",
+                antes, descrever(usuario));
         return resposta(usuario);
     }
 
@@ -120,7 +146,9 @@ public class UsuarioService {
     }
 
     private static String descrever(Usuario u) {
-        return "nome=" + u.getNome() + "; perfil=" + u.getPerfil() + "; percentual_comissao=" + u.getPercentualComissao();
+        // A senha nunca vai para a auditoria; o CPF aparece mascarado (só os 4 últimos dígitos)
+        return "cpf=***" + u.getCpf().substring(7) + "; nome=" + u.getNome() + "; perfil=" + u.getPerfil()
+                + "; percentual_comissao=" + u.getPercentualComissao();
     }
 
     private UsuarioResposta resposta(Usuario u) {

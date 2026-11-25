@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import br.com.empresa.pdv.comum.Pagina;
 import br.com.empresa.pdv.venda.VendaDtos.CancelamentoRequisicao;
 import br.com.empresa.pdv.venda.VendaDtos.CancelamentoResposta;
+import br.com.empresa.pdv.venda.VendaDtos.PreviaRequisicao;
+import br.com.empresa.pdv.venda.VendaDtos.PreviaResposta;
 import br.com.empresa.pdv.venda.VendaDtos.VendaDetalhe;
 import br.com.empresa.pdv.venda.VendaDtos.VendaRegistradaResposta;
 import br.com.empresa.pdv.venda.VendaDtos.VendaRequisicao;
@@ -43,6 +44,12 @@ public class VendaController {
         return service.registrar(requisicao);
     }
 
+    /** Calcula subtotal, descontos e total a pagar sem gravar (a tela divide o pagamento sobre esse total). */
+    @PostMapping("/previa")
+    public PreviaResposta previa(@Valid @RequestBody PreviaRequisicao requisicao) {
+        return service.previa(requisicao);
+    }
+
     @GetMapping
     public Pagina<VendaResumo> listar(@RequestParam(required = false) Integer pagina,
                                       @RequestParam(required = false) Integer limite,
@@ -65,10 +72,10 @@ public class VendaController {
         return service.detalhar(id);
     }
 
+    /** Gerente: qualquer venda. Vendedor: só as próprias, com senha_autorizacao_gerente (UC11). */
     @PostMapping("/{id}/cancelar")
-    @PreAuthorize("hasRole('GERENTE')")
     public CancelamentoResposta cancelar(@PathVariable Long id, @Valid @RequestBody CancelamentoRequisicao dados) {
-        service.cancelar(id, dados.motivoCancelamento());
+        service.cancelar(id, dados.motivoCancelamento(), dados.senhaAutorizacaoGerente());
         return new CancelamentoResposta(true, "Venda cancelada com sucesso. Estoque estornado.", id,
                 StatusVenda.CANCELADA);
     }

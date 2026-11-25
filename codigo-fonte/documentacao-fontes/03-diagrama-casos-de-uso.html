@@ -16,7 +16,7 @@
 <div class="doc-cabecalho">
   <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
   <div class="titulo">Diagrama de Casos de Uso</div>
-  <div class="resumo">Atores, os 16 casos de uso (UC01–UC16) e seus relacionamentos — alinhado ao detalhamento dos casos de uso, à API v2.3 e ao sistema implementado.</div>
+  <div class="resumo">Atores, os 17 casos de uso (UC01–UC17) e seus relacionamentos — alinhado ao detalhamento dos casos de uso, à API v2.3 e ao sistema implementado.</div>
 </div>
 <table class="meta">
   <tr><td>Documento</td><td>DOC-03 · Diagrama de Casos de Uso (UML)</td><td>Versão</td><td>2.0 — 28/10/2026</td></tr>
@@ -26,14 +26,14 @@
 
 <h1>1. Diagrama</h1>
 <figure>
-<svg viewBox="0 0 900 690" width="100%">
+<svg viewBox="0 0 900 740" width="100%">
   <defs>
     <marker id="aberta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10" fill="none" stroke="#33404f" stroke-width="1.3"/></marker>
     <marker id="heranca" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="13" markerHeight="13" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#fff" stroke="#12355b" stroke-width="1.3"/></marker>
   </defs>
 
   <!-- Fronteira do sistema -->
-  <rect x="112" y="25" width="676" height="580" rx="10" fill="#fbfcfd" stroke="#12355b" stroke-width="1.5"/>
+  <rect x="112" y="25" width="676" height="630" rx="10" fill="#fbfcfd" stroke="#12355b" stroke-width="1.5"/>
   <text x="450" y="47" text-anchor="middle" font-size="13" font-weight="700" fill="#12355b">Sistema PDV Web</text>
 
   <!-- Atores -->
@@ -41,8 +41,8 @@
   <g class="ator" transform="translate(852,330)"><circle cx="0" cy="-30" r="10"/><line x1="0" y1="-20" x2="0" y2="12"/><line x1="-15" y1="-8" x2="15" y2="-8"/><line x1="0" y1="12" x2="-12" y2="34"/><line x1="0" y1="12" x2="12" y2="34"/><text y="52">Gerente</text></g>
 
   <!-- Generalização: Gerente herda Vendedor -->
-  <path d="M852 372 V650 H48 V302" fill="none" stroke="#12355b" stroke-width="1.3" marker-end="url(#heranca)"/>
-  <text x="450" y="644" text-anchor="middle" font-size="9.5" fill="#12355b" font-style="italic">Gerente herda todos os casos de uso do Vendedor (generalização)</text>
+  <path d="M852 372 V700 H48 V302" fill="none" stroke="#12355b" stroke-width="1.3" marker-end="url(#heranca)"/>
+  <text x="450" y="694" text-anchor="middle" font-size="9.5" fill="#12355b" font-style="italic">Gerente herda todos os casos de uso do Vendedor (generalização)</text>
 
   <!-- Associações do Vendedor (coluna esquerda) -->
   <g class="assoc">
@@ -54,7 +54,7 @@
   <g class="assoc">
     <line x1="836" y1="318" x2="764" y2="115"/><line x1="836" y1="320" x2="764" y2="195"/><line x1="836" y1="322" x2="764" y2="275"/>
     <line x1="836" y1="324" x2="764" y2="355"/><line x1="836" y1="326" x2="764" y2="435"/><line x1="836" y1="328" x2="764" y2="515"/>
-    <line x1="836" y1="330" x2="545" y2="440"/>
+    <line x1="836" y1="330" x2="545" y2="440"/><line x1="836" y1="332" x2="764" y2="590"/>
   </g>
 
   <!-- Coluna esquerda: Vendedor e Gerente -->
@@ -78,6 +78,7 @@
   <g class="uc g"><ellipse cx="670" cy="355" rx="95" ry="22"/><text x="670" y="359"><tspan class="id">UC14</tspan> Emitir cupons</text></g>
   <g class="uc g"><ellipse cx="670" cy="435" rx="95" ry="22"/><text x="670" y="433"><tspan class="id">UC15</tspan> Sangria / suprimento</text><text x="670" y="445">de caixa</text></g>
   <g class="uc g"><ellipse cx="670" cy="515" rx="95" ry="22"/><text x="670" y="513"><tspan class="id">UC16</tspan> Consultar logs</text><text x="670" y="525">de auditoria</text></g>
+  <g class="uc g"><ellipse cx="670" cy="590" rx="95" ry="22"/><text x="670" y="588"><tspan class="id">UC17</tspan> Configurar</text><text x="670" y="600">parcelamento</text></g>
 
   <!-- include / extend -->
   <path class="dep" d="M318 272 L357 214" marker-end="url(#aberta)"/>
@@ -94,8 +95,8 @@
 <table>
   <thead><tr><th style="width:15%">Ator</th><th>Descrição</th></tr></thead>
   <tbody>
-    <tr><td><b>Vendedor</b></td><td>Operador da frente de caixa: abre e fecha o próprio caixa, registra vendas, aplica cupons, cadastra clientes, consulta estoque e a própria comissão.</td></tr>
-    <tr><td><b>Gerente</b></td><td>Herda todos os casos de uso do Vendedor e tem os privilégios administrativos: desconto direto, cancelamento com estorno, catálogo e estoque, funcionários e comissões, cupons, sangria/suprimento e auditoria.</td></tr>
+    <tr><td><b>Vendedor</b></td><td>Operador da frente de caixa: abre e fecha o próprio caixa, registra vendas (com pagamento dividido e parcelado), aplica cupons, cancela a própria venda com a senha de um Gerente, cadastra clientes, consulta estoque e a própria comissão.</td></tr>
+    <tr><td><b>Gerente</b></td><td>Herda todos os casos de uso do Vendedor e tem os privilégios administrativos: desconto direto, cancelamento com estorno, catálogo e estoque, funcionários e comissões, cupons, sangria/suprimento, parcelamento e auditoria.</td></tr>
     <tr><td><b>Sistema</b></td><td>Executa regras automáticas durante as operações. No diagrama, aparece no UC05 (validação de estoque, em verde), incluído no registro da venda; por ser um caso de uso incluído, não tem ator desenhado.</td></tr>
   </tbody>
 </table>
@@ -114,12 +115,13 @@
     <tr><td>UC08</td><td>Cadastrar e gerenciar clientes</td><td>Vendedor, Gerente</td><td>Inativação exclusiva do Gerente</td></tr>
     <tr><td>UC09</td><td>Consultar estoque e alertas críticos</td><td>Vendedor, Gerente</td><td>Somente leitura</td></tr>
     <tr><td>UC10</td><td>Gerar relatório de comissões</td><td>Vendedor, Gerente</td><td>Vendedor: própria comissão · Gerente: todas</td></tr>
-    <tr><td>UC11</td><td>Cancelar venda</td><td>Gerente</td><td>Estorna os itens ao estoque</td></tr>
+    <tr><td>UC11</td><td>Cancelar venda</td><td>Gerente</td><td>Estorna os itens ao estoque. O Vendedor só cancela a própria venda informando a senha de um Gerente (como no UC07)</td></tr>
     <tr><td>UC12</td><td>Gerenciar catálogo de produtos</td><td>Gerente</td><td>Inclui ajuste de estoque</td></tr>
-    <tr><td>UC13</td><td>Gerenciar funcionários</td><td>Gerente</td><td>Inclui parametrização do % de comissão</td></tr>
+    <tr><td>UC13</td><td>Gerenciar funcionários</td><td>Gerente</td><td>Inclui parametrização do % de comissão, troca de CPF (login) e redefinição de senha</td></tr>
     <tr><td>UC14</td><td>Emitir e gerenciar cupons</td><td>Gerente</td><td>Cupons usados no UC06</td></tr>
     <tr><td>UC15</td><td>Realizar sangria / suprimento</td><td>Gerente</td><td>Requer caixa aberto (UC02)</td></tr>
     <tr><td>UC16</td><td>Consultar logs de auditoria</td><td>Gerente</td><td>Registros gerados pelos demais casos de uso</td></tr>
+    <tr><td>UC17</td><td>Configurar parcelamento sem juros</td><td>Gerente</td><td>Define o máximo de parcelas usado no UC04 (Ciclo 3)</td></tr>
   </tbody>
 </table>
 

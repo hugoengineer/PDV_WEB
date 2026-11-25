@@ -73,7 +73,7 @@ class SegurancaIT extends TesteIntegracao {
             "POST,   /usuarios",
             "GET,    /usuarios",
             "GET,    /auditoria",
-            "POST,   /vendas/1/cancelar",
+            "PUT,    /configuracoes/parcelamento/CARTAO_CREDITO",
             "POST,   /caixas/1/sangria",
             "DELETE, /clientes/2",
             "DELETE, /produtos/1"
@@ -84,6 +84,7 @@ class SegurancaIT extends TesteIntegracao {
         var resultado = switch (metodo.trim()) {
             case "GET" -> obter(url.trim(), vendedor.token());
             case "DELETE" -> excluir(url.trim(), vendedor.token());
+            case "PUT" -> colocar(url.trim(), vendedor.token(), "{}");
             default -> postar(url.trim(), vendedor.token(), "{}");
         };
         resultado.andExpect(status().isForbidden())

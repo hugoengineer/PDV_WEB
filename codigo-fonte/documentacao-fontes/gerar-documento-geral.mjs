@@ -111,7 +111,7 @@ function incluirRequisitos(nome) {
   const html = ler(`${nome}.html`);
   const lista = html.slice(html.indexOf("<h1>2. Lista de requisitos</h1>"));
   const linhas = [...lista.slice(0, lista.indexOf("</table>")).matchAll(/<tr><td>(RF-\d+)<\/td><td>([^<]+)<\/td><td>(UC\d+)<\/td><td>([^<]+)<\/td><td>(.*?)<\/td><\/tr>/g)];
-  if (linhas.length !== 16) throw new Error(`Esperava 16 requisitos em ${nome}, achei ${linhas.length}`);
+  if (linhas.length !== 17) throw new Error(`Esperava 17 requisitos em ${nome}, achei ${linhas.length}`);
   return `<table class="lista-rf"><thead><tr><th style="width:8%">ID</th><th style="width:22%">Requisito</th><th>Descrição</th><th style="width:16%">Ator</th><th style="width:11%">Prioridade</th></tr></thead><tbody>
 ${linhas.map(([, id, requisito, uc, ator, prioridade]) => {
     const descricao = html.match(new RegExp(`<b>${id} — [\\s\\S]*?<tr><td>Descrição</td><td>([\\s\\S]*?)</td></tr>`))?.[1];
@@ -122,7 +122,6 @@ ${linhas.map(([, id, requisito, uc, ator, prioridade]) => {
 
 // Trechos dos documentos 01 a 07 escritos antes do Ciclo 1.2 (Docker validado em 28/10/2026) e do Ciclo 2 (front-end)
 const ATUALIZACOES = [
-  ["(Ciclo 1, 265/265 testes)", "(Ciclo 1.2, 320/320 testes)"],
   [`<td class="warn">Pronto, não executado</td>`, `<td class="warn">Validado no Docker; AWS pendente</td>`],
   [`<td class="warn">Parcial (front-end)</td>`, `<td class="ok">Atendido (seção 9.4)</td>`],
   [`Telas: <span class="warn">pendente</span> (front-end, Ciclo 2).`, `Telas: <span class="ok">verificadas</span> no roteiro de uso com prints (seção 9.4).`],
@@ -229,7 +228,7 @@ function montarSumario(html, entradas, paginas = {}) {
 
 async function gerarPdf(navegador, html) {
   const pagina = await navegador.newPage();
-  await pagina.setContent(html, { waitUntil: "networkidle0", timeout: 60000 });
+  await pagina.setContent(html, { waitUntil: "load", timeout: 300000 });
   const pdf = await pagina.pdf({
     format: "A4", printBackground: true, displayHeaderFooter: true, outline: true, tagged: true,
     headerTemplate: "<span></span>",

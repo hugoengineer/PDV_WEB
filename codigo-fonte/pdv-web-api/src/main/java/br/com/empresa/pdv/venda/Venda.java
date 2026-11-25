@@ -79,14 +79,23 @@ public class Venda {
     @Column(name = "usuario_cancelamento_id")
     private Long usuarioCancelamentoId;
 
+    @Column(length = 500)
+    private String observacao;
+
     @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<ItemVenda> itens = new ArrayList<>();
 
+    @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id")
+    private List<PagamentoVenda> pagamentos = new ArrayList<>();
+
     protected Venda() {
     }
 
-    Venda(Long usuarioId, Long clienteId, Long caixaId, ModalidadePagamento modalidade, OffsetDateTime dataVenda) {
+    Venda(Long usuarioId, Long clienteId, Long caixaId, ModalidadePagamento modalidade, String observacao,
+          OffsetDateTime dataVenda) {
+        this.observacao = observacao;
         this.usuarioId = usuarioId;
         this.clienteId = clienteId;
         this.caixaId = caixaId;
@@ -96,6 +105,10 @@ public class Venda {
 
     void adicionarItem(Long produtoId, int quantidade, BigDecimal precoUnitario) {
         itens.add(new ItemVenda(this, produtoId, quantidade, precoUnitario));
+    }
+
+    void adicionarPagamento(ModalidadePagamento modalidade, BigDecimal valor, int parcelas) {
+        pagamentos.add(new PagamentoVenda(this, modalidade, valor, parcelas));
     }
 
     void aplicarValores(ResumoFinanceiro resumo, Long cupomId, Long gerenteAutorizadorId) {
@@ -194,5 +207,17 @@ public class Venda {
 
     public List<ItemVenda> getItens() {
         return itens;
+    }
+
+    public List<PagamentoVenda> getPagamentos() {
+        return pagamentos;
+    }
+
+    public String getObservacao() {
+        return observacao;
+    }
+
+    public Long getUsuarioCancelamentoId() {
+        return usuarioCancelamentoId;
     }
 }

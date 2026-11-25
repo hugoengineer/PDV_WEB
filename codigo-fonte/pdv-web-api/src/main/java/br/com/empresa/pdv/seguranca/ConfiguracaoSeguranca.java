@@ -50,6 +50,7 @@ import br.com.empresa.pdv.usuario.UsuarioRepository;
 public class ConfiguracaoSeguranca {
 
     static final String CLAIM_PERFIL = "perfil";
+    static final String CLAIM_VERSAO_SESSAO = "sv";
     private static final String GERENTE = "GERENTE";
 
     @Bean
@@ -85,8 +86,9 @@ public class ConfiguracaoSeguranca {
                         .requestMatchers(HttpMethod.PUT, "/produtos/**", "/cupons/**").hasRole(GERENTE)
                         .requestMatchers(HttpMethod.PATCH, "/produtos/**", "/cupons/**").hasRole(GERENTE)
                         .requestMatchers(HttpMethod.DELETE, "/produtos/**", "/cupons/**", "/clientes/**").hasRole(GERENTE)
-                        .requestMatchers(HttpMethod.POST, "/vendas/*/cancelar", "/caixas/*/sangria",
-                                "/caixas/*/suprimento").hasRole(GERENTE)
+                        // Cancelamento: o Vendedor pode pedir com a senha de um gerente; a regra fica no VendaService (UC11)
+                        .requestMatchers(HttpMethod.POST, "/caixas/*/sangria", "/caixas/*/suprimento").hasRole(GERENTE)
+                        .requestMatchers(HttpMethod.PUT, "/configuracoes/**").hasRole(GERENTE)
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(rs -> rs
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(conversorDePerfis()))
@@ -120,7 +122,8 @@ public class ConfiguracaoSeguranca {
                 ? OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Token revogado (logout).", null))
                 : OAuth2TokenValidatorResult.success();
         // O token só vale enquanto o usuário estiver ativo e com o mesmo perfil da emissão: inativação
-        // ou mudança de perfil (ex.: gerente rebaixado) têm efeito imediato, sem esperar as 24 h (DEF-WEB-002)
+        // ou mudança de perfil (ex.: gerente rebaixado) têm efeito imediato, sem esperar as 24 h (DEF-WEB-002).
+        // O mesmo vale quando o gerente troca a senha ou o CPF do funcionário (versão de sessão).
         OAuth2TokenValidator<Jwt> usuarioVigente = jwt -> usuarioVigente(usuarios, jwt)
                 ? OAuth2TokenValidatorResult.success()
                 : OAuth2TokenValidatorResult.failure(
@@ -136,7 +139,10 @@ public class ConfiguracaoSeguranca {
     private static boolean usuarioVigente(UsuarioRepository usuarios, Jwt jwt) {
         try {
             Perfil perfil = Perfil.valueOf(jwt.getClaimAsString(CLAIM_PERFIL));
-            return usuarios.existsByIdAndAtivoTrueAndPerfil(Long.valueOf(jwt.getSubject()), perfil);
+            // Tokens emitidos antes desta versão do sistema não têm a claim: equivalem à versão 0
+            Object versao = jwt.getClaim(CLAIM_VERSAO_SESSAO);
+            int versaoSessao = versao instanceof Number n ? n.intValue() : 0;
+            return usuarios.tokenVigente(Long.valueOf(jwt.getSubject()), perfil, versaoSessao);
         } catch (IllegalArgumentException | NullPointerException e) {
             return false;
         }

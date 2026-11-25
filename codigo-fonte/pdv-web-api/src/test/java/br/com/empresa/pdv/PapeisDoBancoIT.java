@@ -84,7 +84,7 @@ class PapeisDoBancoIT {
     void apiSobeComMenorPrivilegio() {
         JdbcTemplate jdbc = api.getBean(JdbcTemplate.class);
         assertThat(jdbc.queryForObject("SELECT current_user", String.class)).isEqualTo("pdv_app");
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class)).isEqualTo(4);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class)).isEqualTo(5);
         assertThat(jdbc.queryForObject("SELECT tableowner FROM pg_tables WHERE tablename = 'vendas'", String.class))
                 .isEqualTo("pdv_migracao");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM usuarios WHERE perfil = 'GERENTE'", Integer.class)).isEqualTo(1);

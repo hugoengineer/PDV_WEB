@@ -46,6 +46,7 @@
   <tr><td>ativo</td><td>BOOLEAN</td><td>✔</td><td></td><td>Padrão <code>true</code></td><td>Falso = inativado; perde o acesso imediatamente</td></tr>
   <tr><td>criado_em</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Data de cadastro</td></tr>
   <tr><td>atualizado_em</td><td>TIMESTAMPTZ</td><td></td><td></td><td></td><td>Última alteração</td></tr>
+  <tr><td>versao_sessao</td><td>INTEGER</td><td>✔</td><td></td><td>≥ 0; padrão 0 (V5)</td><td>Gravada no token; sobe quando o gerente troca a senha ou o CPF, invalidando as sessões abertas <span class="ex">· 0</span></td></tr>
 </tbody></table>
 
 <h2>2.2 <code>clientes</code> — clientes PF e PJ</h2>
@@ -134,14 +135,15 @@
   <tr><td>desconto_cupom</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt;= 0</code>; padrão 0</td><td>Desconto do cupom (aplicado primeiro) <span class="ex">· 25.00</span></td></tr>
   <tr><td>desconto_gerente</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt;= 0</code>; padrão 0</td><td>Desconto direto em R$ <span class="ex">· 10.00</span></td></tr>
   <tr><td>valor_total</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td><code>&gt;= 0</code>; = subtotal − descontos (CHECK)</td><td>Valor pago <span class="ex">· 215.00</span></td></tr>
-  <tr><td>modalidade_pagamento</td><td>VARCHAR(15)</td><td>✔</td><td></td><td><code>DINHEIRO</code> | <code>PIX</code> | <code>CARTAO_CREDITO</code> | <code>CARTAO_DEBITO</code> | <code>CREDIARIO</code></td><td>Forma de pagamento (simulada)</td></tr>
+  <tr><td>modalidade_pagamento</td><td>VARCHAR(15)</td><td>✔</td><td></td><td><code>DINHEIRO</code> | <code>PIX</code> | <code>CARTAO_CREDITO</code> | <code>CARTAO_DEBITO</code> | <code>CREDIARIO</code> | <code>MULTIPLA</code> (V5)</td><td>Forma de pagamento (simulada); <code>MULTIPLA</code> quando dividido em mais de uma forma (detalhe em <code>venda_pagamentos</code>)</td></tr>
   <tr><td>status</td><td>VARCHAR(10)</td><td>✔</td><td></td><td><code>CONCLUIDA</code> | <code>CANCELADA</code>; padrão CONCLUIDA</td><td>Situação da venda</td></tr>
   <tr><td>percentual_comissao</td><td>NUMERIC(5,2)</td><td>✔</td><td></td><td>Copiado do vendedor no momento da venda</td><td>Percentual congelado <span class="ex">· 5.00</span></td></tr>
   <tr><td>valor_comissao</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td>valor_total × percentual ÷ 100 (base <code>LIQUIDO</code>, padrão) ou valor_subtotal × percentual ÷ 100 (base <code>BRUTO</code>)</td><td>Comissão do vendedor <span class="ex">· 10.75</span></td></tr>
   <tr><td>data_venda</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Momento da venda</td></tr>
   <tr><td>motivo_cancelamento</td><td>VARCHAR(255)</td><td></td><td></td><td>5 a 255 caracteres</td><td>Preenchido no cancelamento</td></tr>
   <tr><td>data_cancelamento</td><td>TIMESTAMPTZ</td><td></td><td></td><td></td><td>Momento do cancelamento</td></tr>
-  <tr><td>usuario_cancelamento_id</td><td>BIGINT</td><td></td><td class="fk">FK</td><td>→ usuarios.id (GERENTE)</td><td>Quem cancelou</td></tr>
+  <tr><td>usuario_cancelamento_id</td><td>BIGINT</td><td></td><td class="fk">FK</td><td>→ usuarios.id (GERENTE)</td><td>Quem cancelou, ou o gerente que autorizou o cancelamento pedido pelo vendedor</td></tr>
+  <tr><td>observacao</td><td>VARCHAR(500)</td><td></td><td></td><td>Até 500 caracteres; imutável (V5)</td><td>Observação do pedido <span class="ex">· Entregar na loja 2</span></td></tr>
 </tbody></table>
 
 <h2>2.8 <code>itens_venda</code> — itens das vendas</h2>
@@ -154,12 +156,30 @@
   <tr><td>subtotal</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td>quantidade × preço unitário</td><td>Valor do item <span class="ex">· 250.00</span></td></tr>
 </tbody></table>
 
+<h2>2.8.1 <code>venda_pagamentos</code> — formas de pagamento da venda (V5)</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador</td></tr>
+  <tr><td>venda_id</td><td>BIGINT</td><td>✔</td><td class="fk">FK</td><td>→ vendas.id</td><td>Venda a que o pagamento pertence</td></tr>
+  <tr><td>modalidade_pagamento</td><td>VARCHAR(15)</td><td>✔</td><td></td><td><code>DINHEIRO</code> | <code>PIX</code> | <code>CARTAO_CREDITO</code> | <code>CARTAO_DEBITO</code> | <code>CREDIARIO</code></td><td>Forma usada nesta parte <span class="ex">· CARTAO_CREDITO</span></td></tr>
+  <tr><td>valor</td><td>NUMERIC(10,2)</td><td>✔</td><td></td><td>≥ 0; a soma dos pagamentos da venda = <code>vendas.valor_total</code></td><td>Valor pago nesta forma <span class="ex">· 150.00</span></td></tr>
+  <tr><td>parcelas</td><td>SMALLINT</td><td>✔</td><td></td><td>1 a 12; acima de 1 só em <code>CARTAO_CREDITO</code> e <code>CREDIARIO</code>; padrão 1</td><td>Parcelas sem juros <span class="ex">· 3</span></td></tr>
+</tbody></table>
+<p class="muted">Só aceita inclusão (gatilho <code>tg_venda_pagamentos_imutavel</code>). Vendas anteriores à V5 receberam um pagamento à vista pelo total.</p>
+
+<h2>2.8.2 <code>configuracao_parcelamento</code> — limite de parcelas por forma (V5)</h2>
+<table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
+  <tr><td>modalidade_pagamento</td><td>VARCHAR(15)</td><td>✔</td><td class="pk">PK</td><td><code>CARTAO_CREDITO</code> | <code>CREDIARIO</code></td><td>Forma que aceita parcelamento</td></tr>
+  <tr><td>max_parcelas</td><td>SMALLINT</td><td>✔</td><td></td><td>1 a 12; valor de fábrica 12</td><td>Máximo de parcelas sem juros que o vendedor pode oferecer <span class="ex">· 6</span></td></tr>
+  <tr><td>atualizado_em</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Última alteração</td></tr>
+  <tr><td>atualizado_por</td><td>BIGINT</td><td></td><td class="fk">FK</td><td>→ usuarios.id (GERENTE)</td><td>Quem alterou</td></tr>
+</tbody></table>
+
 <h2>2.9 <code>logs_auditoria</code> — registro das ações sensíveis</h2>
 <table class="dic"><thead><tr><th>Coluna</th><th>Tipo</th><th>Obrig.</th><th>Chave</th><th>Regras e domínio</th><th>Descrição / exemplo</th></tr></thead><tbody>
   <tr><td>id</td><td>BIGSERIAL</td><td>✔</td><td class="pk">PK</td><td>Gerado pelo banco</td><td>Identificador do registro</td></tr>
   <tr><td>usuario_id</td><td>BIGINT</td><td></td><td class="fk">FK</td><td>→ usuarios.id; nulo em login com CPF inexistente</td><td>Autor da ação</td></tr>
   <tr><td>data_hora</td><td>TIMESTAMPTZ</td><td>✔</td><td></td><td>Padrão: agora</td><td>Momento exato</td></tr>
-  <tr><td>tipo_acao</td><td>VARCHAR(40)</td><td>✔</td><td></td><td>Um dos 25 tipos da seção 3</td><td>Ação realizada <span class="ex">· CANCELAMENTO_VENDA</span></td></tr>
+  <tr><td>tipo_acao</td><td>VARCHAR(40)</td><td>✔</td><td></td><td>Um dos 26 tipos da seção 3</td><td>Ação realizada <span class="ex">· CANCELAMENTO_VENDA</span></td></tr>
   <tr><td>entidade</td><td>VARCHAR(40)</td><td></td><td></td><td>USUARIO, PRODUTO, CLIENTE, CUPOM, CAIXA, VENDA</td><td>Tipo do registro afetado</td></tr>
   <tr><td>entidade_id</td><td>BIGINT</td><td></td><td></td><td>Sem FK (aponta para a tabela indicada em <code>entidade</code>)</td><td>Id do registro afetado <span class="ex">· 89</span></td></tr>
   <tr><td>detalhes</td><td>VARCHAR(1000)</td><td>✔</td><td></td><td></td><td>Descrição legível <span class="ex">· Preço alterado de R$ 250.00 para R$ 270.00…</span></td></tr>
@@ -193,7 +213,7 @@
     <tr><td>Clientes</td><td><code>CLIENTE_CREATE</code>, <code>CLIENTE_UPDATE</code>, <code>CLIENTE_INATIVACAO</code></td></tr>
     <tr><td>Cupons</td><td><code>CUPOM_CREATE</code>, <code>CUPOM_UPDATE</code>, <code>CUPOM_INATIVACAO</code></td></tr>
     <tr><td>Caixa</td><td><code>CAIXA_ABERTURA</code>, <code>CAIXA_FECHAMENTO</code>, <code>SANGRIA</code>, <code>SUPRIMENTO</code></td></tr>
-    <tr><td>Vendas</td><td><code>VENDA_REGISTRO</code>, <code>DESCONTO_GERENTE</code>, <code>AUTORIZACAO_FALHA</code> (senha de gerente errada no desconto), <code>CANCELAMENTO_VENDA</code></td></tr>
+    <tr><td>Vendas</td><td><code>VENDA_REGISTRO</code>, <code>DESCONTO_GERENTE</code>, <code>AUTORIZACAO_FALHA</code> (senha de gerente errada no desconto ou no cancelamento), <code>CANCELAMENTO_VENDA</code>, <code>CONFIGURACAO_PARCELAMENTO</code> (V5)</td></tr>
   </tbody>
 </table>
 

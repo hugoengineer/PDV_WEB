@@ -97,4 +97,59 @@ class UsuarioIT extends TesteIntegracao {
         obter("/usuarios/999", tokenGerente).andExpect(status().isNotFound());
         remendar("/usuarios/999", tokenGerente, "{\"nome\": \"x\"}").andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("CT-USR-008 Gerente redefine a senha do funcionário: nova senha entra, antiga não, sessão aberta encerrada")
+    void gerenteRedefineSenha() throws Exception {
+        Operador vendedor = criarVendedor("Esqueceu a senha", "3");
+        obter("/produtos", vendedor.token()).andExpect(status().isOk());
+
+        remendar("/usuarios/" + vendedor.id(), tokenGerente, "{\"nova_senha\": \"NovaSenha@2026\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.senha").doesNotExist());
+
+        obter("/produtos", vendedor.token()).andExpect(status().isUnauthorized());
+        postar("/auth/login", null, """
+                {"cpf": "%s", "senha": "%s"}""".formatted(vendedor.cpf(), SENHA_PADRAO))
+                .andExpect(status().isUnauthorized());
+        String novoToken = login(vendedor.cpf(), "NovaSenha@2026");
+        obter("/produtos", novoToken).andExpect(status().isOk());
+        String detalhes = jdbc.queryForObject("SELECT detalhes FROM logs_auditoria WHERE tipo_acao = 'USUARIO_UPDATE' "
+                + "AND entidade_id = ? ORDER BY id DESC LIMIT 1", String.class, vendedor.id());
+        org.assertj.core.api.Assertions.assertThat(detalhes).contains("senha redefinida pelo gerente")
+                .doesNotContain("NovaSenha");
+    }
+
+    @Test
+    @DisplayName("CT-USR-009 Gerente troca o CPF (login): entra pelo novo CPF; CPF inválido 400, repetido 409, senha curta 400")
+    void gerenteTrocaCpf() throws Exception {
+        Operador vendedor = criarVendedor("Trocou CPF", "3");
+        Operador outro = criarVendedor("Outro", "3");
+        String novoCpf = GeradorDocumentos.cpf();
+
+        remendar("/usuarios/" + vendedor.id(), tokenGerente, "{\"cpf\": \"123.456.789-00\"}")
+                .andExpect(status().isBadRequest());
+        remendar("/usuarios/" + vendedor.id(), tokenGerente, "{\"cpf\": \"%s\"}".formatted(outro.cpf()))
+                .andExpect(status().isConflict());
+        remendar("/usuarios/" + vendedor.id(), tokenGerente, "{\"nova_senha\": \"curta\"}")
+                .andExpect(status().isBadRequest());
+
+        remendar("/usuarios/" + vendedor.id(), tokenGerente, "{\"cpf\": \"%s\"}".formatted(novoCpf))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cpf").value(novoCpf));
+        obter("/produtos", vendedor.token()).andExpect(status().isUnauthorized());
+        postar("/auth/login", null, """
+                {"cpf": "%s", "senha": "%s"}""".formatted(vendedor.cpf(), SENHA_PADRAO))
+                .andExpect(status().isUnauthorized());
+        login(novoCpf, SENHA_PADRAO);
+    }
+
+    @Test
+    @DisplayName("CT-USR-010 Mudar só nome ou comissão não derruba a sessão do funcionário")
+    void edicaoSimplesMantemSessao() throws Exception {
+        Operador vendedor = criarVendedor("Sessão mantida", "3");
+        remendar("/usuarios/" + vendedor.id(), tokenGerente, """
+                {"nome": "Sessão Mantida da Silva", "percentual_comissao": 6}""").andExpect(status().isOk());
+        obter("/produtos", vendedor.token()).andExpect(status().isOk());
+    }
 }

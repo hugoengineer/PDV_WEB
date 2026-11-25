@@ -1,4 +1,4 @@
-// Gera o SVG do Diagrama Entidade-Relacionamento a partir das colunas do esquema (migrações Flyway V1 e V3)
+// Gera o SVG do Diagrama Entidade-Relacionamento a partir das colunas do esquema (migrações Flyway V1, V3 e V5)
 // e o insere no lugar do marcador <!--DER--> do arquivo 05-diagrama-entidade-relacionamento.html.
 // Uso: node gerar-der.mjs   (rodar novamente sempre que o esquema mudar)
 import fs from "node:fs";
@@ -6,15 +6,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const E = {
-  usuarios: { x: 20, y: 10, cols: [["PK", "id", "BIGSERIAL"], ["UK", "cpf", "VARCHAR(11)"], ["", "nome", "VARCHAR(100)"], ["", "senha_hash", "VARCHAR(100)"], ["", "perfil", "VARCHAR(10)"], ["", "percentual_comissao", "NUMERIC(5,2)"], ["", "ativo", "BOOLEAN"], ["", "criado_em", "TIMESTAMPTZ"], ["", "atualizado_em", "TIMESTAMPTZ"]] },
+  usuarios: { x: 20, y: 10, cols: [["PK", "id", "BIGSERIAL"], ["UK", "cpf", "VARCHAR(11)"], ["", "nome", "VARCHAR(100)"], ["", "senha_hash", "VARCHAR(100)"], ["", "perfil", "VARCHAR(10)"], ["", "percentual_comissao", "NUMERIC(5,2)"], ["", "ativo", "BOOLEAN"], ["", "criado_em", "TIMESTAMPTZ"], ["", "atualizado_em", "TIMESTAMPTZ"], ["", "versao_sessao", "INTEGER"]] },
   caixas: { x: 20, y: 195, cols: [["PK", "id", "BIGSERIAL"], ["FK", "usuario_id", "BIGINT"], ["", "status", "VARCHAR(7)"], ["", "suprimento_inicial", "NUMERIC(10,2)"], ["", "data_abertura", "TIMESTAMPTZ"], ["", "data_fechamento", "TIMESTAMPTZ"], ["", "valor_final_informado", "NUMERIC(10,2)"], ["", "saldo_esperado", "NUMERIC(10,2)"], ["", "diferenca", "NUMERIC(10,2)"]] },
   movimentacoes_caixa: { x: 20, y: 380, cols: [["PK", "id", "BIGSERIAL"], ["FK", "caixa_id", "BIGINT"], ["FK", "usuario_gerente_id", "BIGINT"], ["", "tipo", "VARCHAR(10)"], ["", "valor", "NUMERIC(10,2)"], ["", "observacao", "VARCHAR(255)"], ["", "data_hora", "TIMESTAMPTZ"]] },
   logs_auditoria: { x: 20, y: 540, cols: [["PK", "id", "BIGSERIAL"], ["FK", "usuario_id", "BIGINT"], ["", "data_hora", "TIMESTAMPTZ"], ["", "tipo_acao", "VARCHAR(40)"], ["", "entidade", "VARCHAR(40)"], ["", "entidade_id", "BIGINT"], ["", "detalhes", "VARCHAR(1000)"], ["", "valor_anterior", "TEXT"], ["", "valor_novo", "TEXT"]] },
   clientes: { x: 280, y: 10, cols: [["PK", "id", "BIGSERIAL"], ["", "tipo", "VARCHAR(2)"], ["UK", "cpf_cnpj", "VARCHAR(14)"], ["", "nome_razao_social", "VARCHAR(150)"], ["", "email", "VARCHAR(150)"], ["", "telefone", "VARCHAR(20)"], ["", "cep", "VARCHAR(8)"], ["", "endereco", "VARCHAR(200)"], ["", "bairro", "VARCHAR(100)"], ["", "cidade", "VARCHAR(100)"], ["", "uf", "VARCHAR(2)"], ["", "ativo", "BOOLEAN"], ["", "criado_em", "TIMESTAMPTZ"], ["", "atualizado_em", "TIMESTAMPTZ"]] },
-  vendas: { x: 280, y: 255, cols: [["PK", "id", "BIGSERIAL"], ["FK", "usuario_id", "BIGINT"], ["FK", "cliente_id", "BIGINT"], ["FK", "caixa_id", "BIGINT"], ["FK", "cupom_id", "BIGINT"], ["FK", "gerente_autorizador_id", "BIGINT"], ["", "valor_subtotal", "NUMERIC(10,2)"], ["", "desconto_cupom", "NUMERIC(10,2)"], ["", "desconto_gerente", "NUMERIC(10,2)"], ["", "valor_total", "NUMERIC(10,2)"], ["", "modalidade_pagamento", "VARCHAR(15)"], ["", "status", "VARCHAR(10)"], ["", "percentual_comissao", "NUMERIC(5,2)"], ["", "valor_comissao", "NUMERIC(10,2)"], ["", "data_venda", "TIMESTAMPTZ"], ["", "motivo_cancelamento", "VARCHAR(255)"], ["", "data_cancelamento", "TIMESTAMPTZ"], ["FK", "usuario_cancelamento_id", "BIGINT"]] },
+  vendas: { x: 280, y: 255, cols: [["PK", "id", "BIGSERIAL"], ["FK", "usuario_id", "BIGINT"], ["FK", "cliente_id", "BIGINT"], ["FK", "caixa_id", "BIGINT"], ["FK", "cupom_id", "BIGINT"], ["FK", "gerente_autorizador_id", "BIGINT"], ["", "valor_subtotal", "NUMERIC(10,2)"], ["", "desconto_cupom", "NUMERIC(10,2)"], ["", "desconto_gerente", "NUMERIC(10,2)"], ["", "valor_total", "NUMERIC(10,2)"], ["", "modalidade_pagamento", "VARCHAR(15)"], ["", "status", "VARCHAR(10)"], ["", "percentual_comissao", "NUMERIC(5,2)"], ["", "valor_comissao", "NUMERIC(10,2)"], ["", "data_venda", "TIMESTAMPTZ"], ["", "motivo_cancelamento", "VARCHAR(255)"], ["", "data_cancelamento", "TIMESTAMPTZ"], ["FK", "usuario_cancelamento_id", "BIGINT"], ["", "observacao", "VARCHAR(500)"]] },
   itens_venda: { x: 280, y: 560, cols: [["PK", "id", "BIGSERIAL"], ["FK", "venda_id", "BIGINT"], ["FK", "produto_id", "BIGINT"], ["", "quantidade", "INTEGER"], ["", "preco_unitario", "NUMERIC(10,2)"], ["", "subtotal", "NUMERIC(10,2)"]] },
   cupons_desconto: { x: 540, y: 10, cols: [["PK", "id", "BIGSERIAL"], ["UK", "codigo", "VARCHAR(30)"], ["", "tipo_desconto", "VARCHAR(12)"], ["", "valor_desconto", "NUMERIC(10,2)"], ["", "data_inicio_validade", "TIMESTAMPTZ"], ["", "data_termino_validade", "TIMESTAMPTZ"], ["", "ativo", "BOOLEAN"], ["", "criado_em", "TIMESTAMPTZ"], ["", "atualizado_em", "TIMESTAMPTZ"]] },
   tokens_revogados: { x: 20, y: 715, cols: [["PK", "jti", "VARCHAR(64)"], ["", "expira_em", "TIMESTAMPTZ"], ["", "revogado_em", "TIMESTAMPTZ"]] },
+  venda_pagamentos: { x: 280, y: 822, cols: [["PK", "id", "BIGSERIAL"], ["FK", "venda_id", "BIGINT"], ["", "modalidade_pagamento", "VARCHAR(15)"], ["", "valor", "NUMERIC(10,2)"], ["", "parcelas", "SMALLINT"]] },
+  configuracao_parcelamento: { x: 540, y: 822, cols: [["PK", "modalidade_pagamento", "VARCHAR(15)"], ["", "max_parcelas", "SMALLINT"], ["", "atualizado_em", "TIMESTAMPTZ"], ["FK", "atualizado_por", "BIGINT"]] },
   tentativas_acesso: { x: 280, y: 715, cols: [["PK", "chave", "VARCHAR(80)"], ["", "falhas", "INTEGER"], ["", "janela_inicio", "TIMESTAMPTZ"], ["", "bloqueado_ate", "TIMESTAMPTZ"]] },
   produtos: { x: 540, y: 470, cols: [["PK", "id", "BIGSERIAL"], ["UK", "sku", "VARCHAR(40)"], ["", "nome", "VARCHAR(120)"], ["", "fornecedor", "VARCHAR(120)"], ["", "unidade_medida", "VARCHAR(10)"], ["UK", "codigo_barras", "VARCHAR(14)"], ["", "ncm", "VARCHAR(8)"], ["", "cest", "VARCHAR(7)"], ["", "preco_venda", "NUMERIC(10,2)"], ["", "estoque_atual", "INTEGER"], ["", "estoque_minimo", "INTEGER"], ["", "ativo", "BOOLEAN"], ["", "criado_em", "TIMESTAMPTZ"], ["", "atualizado_em", "TIMESTAMPTZ"]] },
 };
@@ -40,7 +42,7 @@ for (const [nome, e] of Object.entries(E)) {
 
 // Relacionamentos: o caminho sai do lado "1" (traços duplos) e chega no lado "N" (pé de galinha)
 const RELACOES = [
-  { d: "M130 155 V195", rotulo: [136, 178] },                         // usuarios → caixas
+  { d: "M130 168 V195", rotulo: [136, 184] },                         // usuarios → caixas
   { d: "M130 340 V380", rotulo: [136, 363] },                         // caixas → movimentacoes_caixa
   { d: "M20 120 H8 V440 H20", semInicio: false },                     // usuarios → movimentacoes (gerente)
   { d: "M8 440 V610 H20", semInicioMarcador: true },                  // ramo → logs_auditoria
@@ -50,6 +52,7 @@ const RELACOES = [
   { d: "M540 90 C515 90 525 360 500 360", rotulo: [503, 215] },      // cupons → vendas
   { d: "M390 517 V560", rotulo: [396, 542] },                         // vendas → itens
   { d: "M540 620 H500", rotulo: [507, 614] },                         // produtos → itens
+  { d: "M500 505 H522 V870 H500", rotulo: [526, 860] },              // vendas → venda_pagamentos (V5)
 ];
 let relacoes = "";
 for (const r of RELACOES) {
@@ -81,13 +84,20 @@ const marcadores = `<defs>
 <marker id="muitos" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 6 L11 1 M1 6 L11 6 M1 6 L11 11" stroke="#33404f" stroke-width="1.2" fill="none"/></marker></defs>`;
 
 const seguranca = `<line x1="20" y1="702" x2="750" y2="702" stroke="#d8dee6" stroke-dasharray="4 3"/>
+<line x1="20" y1="808" x2="750" y2="808" stroke="#d8dee6" stroke-dasharray="4 3"/>
+<g transform="translate(20,822)"><text x="0" y="12" font-size="9.5" font-weight="700" fill="#12355b">Pagamentos e parcelamento (migração V5)</text>
+<text x="0" y="28" font-size="8.2" fill="#33404f">Uma venda tem 1 a 10 pagamentos; a soma</text>
+<text x="0" y="41" font-size="8.2" fill="#33404f">é igual a vendas.valor_total. Parcelas</text>
+<text x="0" y="54" font-size="8.2" fill="#33404f">(1 a 12) só em crédito e crediário, até o</text>
+<text x="0" y="67" font-size="8.2" fill="#33404f">máximo de configuracao_parcelamento.</text>
+<text x="0" y="80" font-size="8.2" fill="#33404f">atualizado_por → usuarios (gerente).</text></g>
 <g transform="translate(540,715)"><text x="0" y="12" font-size="9.5" font-weight="700" fill="#12355b">Tabelas de segurança (migração V3)</text>
 <text x="0" y="28" font-size="8.2" fill="#33404f">Sem chaves estrangeiras: guardam</text>
 <text x="0" y="41" font-size="8.2" fill="#33404f">tokens revogados (logout/renovação) e</text>
 <text x="0" y="54" font-size="8.2" fill="#33404f">tentativas erradas por CPF, IP ou</text>
 <text x="0" y="67" font-size="8.2" fill="#33404f">vendedor (chave "cpf:…", "ip:…", "pin:…").</text></g>`;
 
-const svg = `<svg viewBox="0 0 770 805" width="100%"><!--DER-INICIO-->${marcadores}${relacoes}${entidades}${legenda}${seguranca}<!--DER-FIM--></svg>`;
+const svg = `<svg viewBox="0 0 770 935" width="100%"><!--DER-INICIO-->${marcadores}${relacoes}${entidades}${legenda}${seguranca}<!--DER-FIM--></svg>`;
 const arquivo = path.join(path.dirname(fileURLToPath(import.meta.url)), "05-diagrama-entidade-relacionamento.html");
 const html = fs.readFileSync(arquivo, "utf8");
 const atualizado = html.includes("<!--DER-INICIO-->")

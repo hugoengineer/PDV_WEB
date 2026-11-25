@@ -4,7 +4,7 @@
 <div class="doc-cabecalho">
   <div class="projeto">PDV Web · Sistema de Ponto de Venda</div>
   <div class="titulo">Requisitos Funcionais</div>
-  <div class="resumo">O que o sistema deve fazer: 16 requisitos (RF-01 a RF-16), um para cada caso de uso, com regras, critérios de aceitação, rotas da API e testes que os comprovam.</div>
+  <div class="resumo">O que o sistema deve fazer: 17 requisitos (RF-01 a RF-17), um para cada caso de uso, com regras, critérios de aceitação, rotas da API e testes que os comprovam.</div>
 </div>
 <table class="meta">
   <tr><td>Documento</td><td>DOC-01 · Requisitos Funcionais</td><td>Versão</td><td>2.0 — 28/10/2026</td></tr>
@@ -17,7 +17,7 @@
 <ul>
   <li><b>Atores:</b> <b>Vendedor</b>, <b>Gerente</b> (herda tudo o que o Vendedor faz) e <b>Sistema</b> (regras automáticas).</li>
   <li><b>Prioridade:</b> <span class="tag r">Essencial</span> sem ela o PDV não opera · <span class="tag l">Importante</span> necessária à gestão · <span class="tag g">Desejável</span> melhora a operação.</li>
-  <li><b>Status:</b> todos os 16 requisitos estão <span class="ok">implementados e aprovados em teste</span> no backend (Ciclo 1, 265/265 testes).</li>
+  <li><b>Status:</b> todos os 17 requisitos estão <span class="ok">implementados e aprovados em teste</span> (Ciclo 3, 24/11/2026: pagamento dividido, parcelamento sem juros, observação, cancelamento pelo vendedor com senha do gerente e gestão completa de funcionários).</li>
   <li>Valores monetários têm 2 casas decimais e arredondamento comercial (meio para cima). Datas seguem o fuso de Brasília (−03:00).</li>
 </ul>
 
@@ -35,12 +35,13 @@
     <tr><td>RF-08</td><td>Cadastrar e gerenciar clientes</td><td>UC08</td><td>Vendedor, Gerente</td><td><span class="tag l">Importante</span></td></tr>
     <tr><td>RF-09</td><td>Consultar estoque e alertas críticos</td><td>UC09</td><td>Vendedor, Gerente</td><td><span class="tag l">Importante</span></td></tr>
     <tr><td>RF-10</td><td>Gerar relatório de comissões</td><td>UC10</td><td>Vendedor (própria), Gerente (todas)</td><td><span class="tag l">Importante</span></td></tr>
-    <tr><td>RF-11</td><td>Cancelar venda com estorno</td><td>UC11</td><td>Gerente</td><td><span class="tag r">Essencial</span></td></tr>
+    <tr><td>RF-11</td><td>Cancelar venda com estorno</td><td>UC11</td><td>Gerente (ou Vendedor com senha do gerente)</td><td><span class="tag r">Essencial</span></td></tr>
     <tr><td>RF-12</td><td>Gerenciar catálogo de produtos</td><td>UC12</td><td>Gerente</td><td><span class="tag r">Essencial</span></td></tr>
     <tr><td>RF-13</td><td>Gerenciar funcionários e comissões</td><td>UC13</td><td>Gerente</td><td><span class="tag r">Essencial</span></td></tr>
     <tr><td>RF-14</td><td>Emitir e gerenciar cupons</td><td>UC14</td><td>Gerente</td><td><span class="tag g">Desejável</span></td></tr>
     <tr><td>RF-15</td><td>Realizar sangria e suprimento de caixa</td><td>UC15</td><td>Gerente</td><td><span class="tag r">Essencial</span></td></tr>
     <tr><td>RF-16</td><td>Consultar logs de auditoria</td><td>UC16</td><td>Gerente</td><td><span class="tag l">Importante</span></td></tr>
+    <tr><td>RF-17</td><td>Configurar parcelamento sem juros</td><td>UC17</td><td>Gerente</td><td><span class="tag l">Importante</span></td></tr>
   </tbody>
 </table>
 
@@ -77,33 +78,37 @@
 <div class="ficha"><div class="topo"><b>RF-03 — Fechar caixa</b><span><span class="tag g">UC03</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
   <tr><td>Descrição</td><td>No fim do turno, o operador informa o dinheiro contado; o sistema calcula o esperado, registra a diferença e fecha o caixa.</td></tr>
   <tr><td>Regras</td><td><ol>
-    <li>Saldo esperado em dinheiro = suprimento inicial + suprimentos + vendas <b>em dinheiro</b> concluídas − sangrias.</li>
+    <li>Saldo esperado em dinheiro = suprimento inicial + suprimentos + <b>parte paga em dinheiro</b> das vendas concluídas − sangrias. Numa venda com pagamento dividido, só a parcela em dinheiro entra (ex.: R$ 40 em dinheiro + R$ 60 no PIX → soma R$ 40).</li>
     <li>Diferença = valor contado − saldo esperado (positiva = sobra; negativa = falta).</li>
-    <li>O Vendedor só fecha o próprio caixa; o Gerente pode fechar qualquer um.</li>
+    <li>O Vendedor só fecha o próprio caixa; o Gerente pode fechar qualquer um. Na tela, o vendedor abre e fecha o caixa pela <b>Frente de caixa</b>; a aba Caixa (resumo, sangria e suprimento) é só do Gerente.</li>
     <li>Um caixa FECHADO não aceita novo fechamento, sangria, suprimento nem venda (422 <code>caixa-fechado</code>).</li>
     <li>A resposta traz total de vendas, total em dinheiro, sangrias, suprimentos, saldo esperado, valor informado e diferença.</li></ol></td></tr>
   <tr><td>Critérios de aceitação</td><td>200 com status FECHADO e a diferença calculada; ações em caixa fechado → 422.</td></tr>
   <tr><td>Rotas</td><td><code>POST /caixas/{id}/fechamento</code></td></tr>
-  <tr><td>Testes</td><td>CT-CX-009 a 011, CT-CX-U01, CT-CX-U02, CT-CX-U13, BDD-CX-02</td></tr>
+  <tr><td>Testes</td><td>CT-CX-009 a 011, CT-CX-U01, CT-CX-U02, CT-CX-U13, BDD-CX-02, CT-PAG-007</td></tr>
 </table></div></div>
 
 <div class="ficha"><div class="topo"><b>RF-04 — Registrar venda e consultar histórico</b><span><span class="tag g">UC04</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
-  <tr><td>Descrição</td><td>O operador registra uma venda com um ou mais itens, identifica o cliente (ou usa o Consumidor Padrão) e a forma de pagamento.</td></tr>
+  <tr><td>Descrição</td><td>O operador monta o pedido na Frente de caixa, identifica o cliente (ou usa o Consumidor Padrão), divide o pagamento em uma ou mais formas e finaliza a venda.</td></tr>
   <tr><td>Regras</td><td><ol>
     <li>Exige um caixa ABERTO do próprio operador (caixa de outro → 403; fechado → 422; inexistente → 404).</li>
     <li>Cliente opcional: sem cliente, a venda vai para o "CONSUMIDOR PADRÃO". Cliente inexistente ou inativo → 404.</li>
     <li>Formas de pagamento: Dinheiro, PIX, Cartão de Crédito, Cartão de Débito e Crediário (simuladas, sem TEF).</li>
+    <li><b>Pagamento dividido:</b> a venda pode ter até 10 pagamentos (<code>pagamentos[]</code>: forma, valor e parcelas). A soma deve ser <b>exatamente</b> o total calculado pelo servidor, ao centavo; qualquer diferença → 422 <code>pagamento-divergente</code> e nada é gravado. Com mais de uma forma, a venda fica com <code>modalidade_pagamento = MULTIPLA</code>. O contrato original (<code>modalidade_pagamento</code> sozinho) continua aceito e vira um pagamento à vista pelo total; enviar os dois juntos ou nenhum → 400.</li>
+    <li><b>Parcelamento sem juros:</b> só Cartão de Crédito e Crediário, de 1x até o máximo definido pelo Gerente (RF-17, limite do sistema 12x). Parcelas em outra forma ou acima do máximo → 422 <code>parcelamento-invalido</code>. O valor da parcela é o total da forma ÷ parcelas, arredondado para baixo; a última parcela leva a diferença de centavos (R$ 100 em 3x = 33,33 + 33,33 + 33,34).</li>
+    <li><b>Observação</b> opcional do pedido, até 500 caracteres, gravada com a venda e imutável.</li>
+    <li>Antes de finalizar, o pedido existe só na tela: itens e quantidades podem ser alterados ou removidos e o pedido pode ser descartado; o total é recalculado a cada mudança. A prévia <code>POST /vendas/previa</code> devolve subtotal, descontos e total sem gravar nada.</li>
     <li>De 1 a 200 itens; quantidade de 1 a 10.000 por item; o mesmo produto repetido é somado.</li>
     <li>Produto inexistente ou inativo → 404. O preço praticado é sempre o do catálogo; o preço enviado pelo cliente é ignorado.</li>
     <li>Estoque validado pelo RF-05; descontos pelo RF-06 e RF-07.</li>
-    <li>A comissão do vendedor (valor líquido × percentual; ou subtotal bruto × percentual com <code>PDV_COMISSAO_BASE=BRUTO</code>) é calculada e o percentual fica <b>congelado</b> na venda.</li>
-    <li>Tudo acontece numa única transação: venda, itens, baixa de estoque e auditoria; qualquer falha desfaz tudo.</li>
+    <li>A comissão do vendedor (valor líquido × percentual; ou subtotal bruto × percentual com <code>PDV_COMISSAO_BASE=BRUTO</code>) é calculada e o percentual fica <b>congelado</b> na venda. Formas e parcelas não alteram a comissão: ela é sempre sobre o valor da venda.</li>
+    <li>Tudo acontece numa única transação: venda, itens, pagamentos, baixa de estoque e auditoria; qualquer falha desfaz tudo.</li>
     <li>A resposta inclui a lista de produtos que atingiram o estoque mínimo (alerta crítico).</li>
-    <li>Vendas são imutáveis: não podem ser editadas nem excluídas (405). Só podem ser canceladas (RF-11).</li>
+    <li>Vendas são imutáveis depois de finalizadas: itens, pagamentos e observação não podem ser editados nem excluídos (405; gatilhos no banco). Só podem ser canceladas (RF-11).</li>
     <li>Histórico paginado com filtros de período, vendedor e status. O Vendedor vê só as próprias vendas.</li></ol></td></tr>
   <tr><td>Critérios de aceitação</td><td>201 com subtotal, descontos, total, comissão e status CONCLUIDA; estoque baixado no banco.</td></tr>
-  <tr><td>Rotas</td><td><code>POST /vendas</code> · <code>GET /vendas</code> · <code>GET /vendas/{id}</code></td></tr>
-  <tr><td>Testes</td><td>CT-VEN-001 a 020, CT-VEN-U10 a U19, CT-HIS-001 a 003, BDD-EST-01/02</td></tr>
+  <tr><td>Rotas</td><td><code>POST /vendas</code> · <code>POST /vendas/previa</code> · <code>GET /vendas</code> · <code>GET /vendas/{id}</code></td></tr>
+  <tr><td>Testes</td><td>CT-VEN-001 a 020, CT-VEN-U10 a U19, CT-HIS-001 a 003, BDD-EST-01/02, CT-PAG-001 a 010, CT-OBS-001, CT-DB-014</td></tr>
 </table></div></div>
 
 <div class="ficha"><div class="topo"><b>RF-05 — Validar estoque automaticamente</b><span><span class="tag g">UC05</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
@@ -179,15 +184,17 @@
 </table></div></div>
 
 <div class="ficha"><div class="topo"><b>RF-11 — Cancelar venda com estorno</b><span><span class="tag g">UC11</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
-  <tr><td>Descrição</td><td>O Gerente cancela uma venda concluída; os itens voltam ao estoque e a venda sai dos totais.</td></tr>
+  <tr><td>Descrição</td><td>Uma venda concluída é cancelada; os itens voltam ao estoque e a venda sai dos totais. O Gerente cancela direto; o Vendedor, com a senha de um Gerente.</td></tr>
   <tr><td>Regras</td><td><ol>
-    <li>Exclusivo do Gerente (Vendedor → 403 "Acesso Negado").</li>
+    <li>Gerente: cancela qualquer venda. Vendedor: só as <b>próprias</b> vendas e informando <code>senha_autorizacao_gerente</code> de um gerente ativo; sem senha ou com senha errada → 403 "Acesso Negado"; venda de outro vendedor → 403.</li>
+    <li>Senha errada é auditada (AUTORIZACAO_FALHA) e conta para o limite de 5 tentativas em 15 min por vendedor (429), o mesmo do desconto direto.</li>
+    <li>O gerente que autorizou fica gravado como responsável (<code>usuario_cancelamento_id</code>); a auditoria registra quem pediu e quem autorizou.</li>
     <li>Motivo obrigatório, de 5 a 255 caracteres.</li>
     <li>CONCLUIDA → CANCELADA. Uma venda já cancelada não pode ser cancelada de novo (422), e o estoque nunca é estornado duas vezes.</li>
     <li>As quantidades voltam ao estoque na mesma transação; a venda deixa de contar no caixa e nas comissões.</li>
     <li>O cancelamento é auditado com o motivo e os itens estornados.</li></ol></td></tr>
   <tr><td>Rotas</td><td><code>POST /vendas/{id}/cancelar</code></td></tr>
-  <tr><td>Testes</td><td>CT-CAN-001 a 006, CT-VEN-U01/U02, CT-CONC-002, BDD-CAN-01 a 03</td></tr>
+  <tr><td>Testes</td><td>CT-CAN-001 a 008, CT-VEN-U01/U02, CT-CONC-002, BDD-CAN-01 a 03</td></tr>
 </table></div></div>
 
 <div class="ficha"><div class="topo"><b>RF-12 — Gerenciar catálogo de produtos</b><span><span class="tag g">UC12</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
@@ -204,16 +211,18 @@
 </table></div></div>
 
 <div class="ficha"><div class="topo"><b>RF-13 — Gerenciar funcionários e comissões</b><span><span class="tag g">UC13</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
-  <tr><td>Descrição</td><td>O Gerente cadastra funcionários, define perfil e percentual de comissão e pode inativá-los.</td></tr>
+  <tr><td>Descrição</td><td>O Gerente cadastra funcionários, vê a ficha de cada um (dados, vendas e comissão), edita nome, CPF (login), perfil, comissão e senha, e pode inativá-los.</td></tr>
   <tr><td>Regras</td><td><ol>
     <li>CPF válido e único. Nome obrigatório (até 100). Perfil VENDEDOR ou GERENTE.</li>
     <li>Percentual de comissão de 0 a 100, com até 2 casas. Senha inicial de 8 a 72 caracteres.</li>
-    <li>A senha nunca aparece nas respostas. Ela só muda pelo próprio usuário (RF-01).</li>
+    <li>A senha nunca aparece nas respostas nem na auditoria. O próprio usuário troca a senha informando a atual (RF-01); o Gerente pode <b>redefinir</b> a senha de um funcionário (<code>nova_senha</code>, 8 a 72 caracteres) sem conhecer a atual.</li>
+    <li>O Gerente pode trocar o CPF (login) do funcionário: CPF inválido → 400; já usado por outro → 409.</li>
+    <li>Redefinir a senha ou trocar o CPF encerra na hora todas as sessões abertas do funcionário (versão de sessão no token); mudar só nome ou comissão não derruba a sessão.</li>
     <li>O Gerente não pode inativar a si mesmo nem retirar o próprio perfil de Gerente.</li>
     <li>Inativar ou mudar o perfil encerra imediatamente as sessões do funcionário.</li>
     <li>O primeiro Gerente é criado na instalação, a partir das variáveis de ambiente <code>PDV_ADMIN_CPF</code> e <code>PDV_ADMIN_SENHA</code>.</li></ol></td></tr>
   <tr><td>Rotas</td><td><code>POST</code> · <code>GET</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE /usuarios[/{id}]</code></td></tr>
-  <tr><td>Testes</td><td>CT-USR-001 a 006, CT-SEG-004, CT-SEG-009, CT-AUTH-U03</td></tr>
+  <tr><td>Testes</td><td>CT-USR-001 a 010, CT-SEG-004, CT-SEG-009, CT-AUTH-U03</td></tr>
 </table></div></div>
 
 <div class="ficha"><div class="topo"><b>RF-14 — Emitir e gerenciar cupons</b><span><span class="tag g">UC14</span> <span class="tag g">Desejável</span></span></div><div class="corpo"><table>
@@ -231,7 +240,7 @@
 <div class="ficha"><div class="topo"><b>RF-15 — Realizar sangria e suprimento de caixa</b><span><span class="tag g">UC15</span> <span class="tag r">Essencial</span></span></div><div class="corpo"><table>
   <tr><td>Descrição</td><td>O Gerente retira (sangria) ou adiciona (suprimento) dinheiro em espécie num caixa aberto.</td></tr>
   <tr><td>Regras</td><td><ol>
-    <li>Exclusivo do Gerente; o caixa precisa estar ABERTO.</li>
+    <li>Exclusivo do Gerente; o caixa precisa estar ABERTO. Na tela, sangria e suprimento ficam na aba Caixa, que só o Gerente vê.</li>
     <li>Valor maior que zero; justificativa obrigatória (até 255 caracteres).</li>
     <li>A sangria não pode ser maior que o saldo em dinheiro do caixa (422 <code>saldo-caixa-insuficiente</code>).</li>
     <li>A resposta traz o saldo em dinheiro atualizado; a operação é auditada com saldo anterior e novo.</li></ol></td></tr>
@@ -243,11 +252,24 @@
   <tr><td>Descrição</td><td>O Gerente consulta o histórico de ações sensíveis realizadas no sistema.</td></tr>
   <tr><td>Regras</td><td><ol>
     <li>Cada registro guarda usuário, data/hora, tipo de ação, entidade afetada, detalhes, valor anterior e valor novo.</li>
-    <li>São auditados: login (sucesso e falha), troca de senha, caixa (abertura, fechamento, sangria, suprimento), venda, desconto do gerente, cancelamento e o cadastro/alteração/inativação de produtos, estoque, clientes, cupons e funcionários.</li>
+    <li>São auditados: login (sucesso e falha), troca de senha, caixa (abertura, fechamento, sangria, suprimento), venda (com as formas de pagamento), desconto do gerente, cancelamento (com quem pediu e quem autorizou), configuração de parcelamento e o cadastro/alteração/inativação de produtos, estoque, clientes, cupons e funcionários.</li>
     <li>Uma operação que falha não deixa registro (o log participa da mesma transação).</li>
     <li>Filtros por período e tipo de ação; resultados do mais recente para o mais antigo, paginados.</li></ol></td></tr>
   <tr><td>Rotas</td><td><code>GET /auditoria</code></td></tr>
   <tr><td>Testes</td><td>CT-AUD-001 a 004</td></tr>
+</table></div></div>
+
+<div class="ficha"><div class="topo"><b>RF-17 — Configurar parcelamento sem juros</b><span><span class="tag g">UC17</span> <span class="tag l">Importante</span></span></div><div class="corpo"><table>
+  <tr><td>Descrição</td><td>O Gerente define o número máximo de parcelas sem juros de cada forma que aceita parcelamento; a Frente de caixa mostra ao vendedor só as opções liberadas.</td></tr>
+  <tr><td>Regras</td><td><ol>
+    <li>Só Cartão de Crédito e Crediário aceitam parcelamento; tentar configurar outra forma → 422 <code>parcelamento-invalido</code>.</li>
+    <li>Máximo de 1 a 12 parcelas (1 = só à vista); fora disso → 400. Valor de fábrica: 12x nas duas formas.</li>
+    <li>Leitura pelos dois perfis (a tela de venda precisa das opções); alteração só pelo Gerente (Vendedor → 403).</li>
+    <li>Sem juros: o total da venda e a comissão não mudam com o número de parcelas.</li>
+    <li>Cada alteração é auditada (CONFIGURACAO_PARCELAMENTO) com o valor anterior e o novo.</li></ol></td></tr>
+  <tr><td>Critérios de aceitação</td><td>Gerente limita o crédito a 4x → venda em 6x recusada (422); ao liberar 6x, a mesma venda é aceita.</td></tr>
+  <tr><td>Rotas</td><td><code>GET /configuracoes/parcelamento</code> · <code>PUT /configuracoes/parcelamento/{forma}</code></td></tr>
+  <tr><td>Testes</td><td>CT-PAR-001, CT-PAR-002, CT-PAG-004, CT-PAG-005</td></tr>
 </table></div></div>
 
 <h1 class="quebra">4. Validações de sistema (numeração unificada)</h1>
@@ -282,6 +304,7 @@ variavam entre os documentos. Fica valendo a numeração abaixo, já usada no c�
     <tr><td>RF-12 a 14</td><td>UC12 a 14</td><td>Plano 1.6 (tela do Gerente)</td><td>RNF-02, RNF-07</td></tr>
     <tr><td>RF-15</td><td>UC15</td><td>Documentação do Projeto §1 (sangria)</td><td>RNF-06, RNF-07</td></tr>
     <tr><td>RF-16</td><td>UC16</td><td>Regra 1.2 (LOG)</td><td>RNF-07</td></tr>
+    <tr><td>RF-17</td><td>UC17</td><td>Pedido do cliente (Ciclo 3, 24/11/2026)</td><td>RNF-02, RNF-07</td></tr>
   </tbody>
 </table>
 <p class="muted">A rastreabilidade completa (requisito → casos de teste → resultado) está na Matriz de Rastreabilidade, na pasta de testes.</p>

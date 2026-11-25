@@ -45,6 +45,10 @@ public class Usuario {
     @Column(name = "atualizado_em")
     private OffsetDateTime atualizadoEm;
 
+    /** Versão das sessões; só tokens emitidos com a versão atual valem (sobe quando o gerente troca senha ou CPF). */
+    @Column(name = "versao_sessao", nullable = false)
+    private int versaoSessao;
+
     protected Usuario() {
     }
 
@@ -120,6 +124,15 @@ public class Usuario {
 
     public OffsetDateTime getAtualizadoEm() {
         return atualizadoEm;
+    }
+
+    /** Invalida todos os tokens já emitidos para este usuário. */
+    public void encerrarSessoes() {
+        this.versaoSessao++;
+    }
+
+    public int getVersaoSessao() {
+        return versaoSessao;
     }
 
     public void setAtualizadoEm(OffsetDateTime atualizadoEm) {

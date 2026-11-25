@@ -32,7 +32,7 @@ class CancelamentoEConsultaIT extends TesteIntegracao {
     }
 
     @Test
-    @DisplayName("CT-CAN-001 Vendedor tenta cancelar a venda → 403 \"Acesso Negado\" (Regras, seção 3)")
+    @DisplayName("CT-CAN-001 Vendedor tenta cancelar a venda sem a senha do gerente → 403 \"Acesso Negado\"")
     void vendedorNaoCancela() throws Exception {
         long venda = vender(2);
         postar("/vendas/" + venda + "/cancelar", vendedor.token(), MOTIVO)
@@ -188,6 +188,43 @@ class CancelamentoEConsultaIT extends TesteIntegracao {
         obter("/vendas/comissoes", vendedor.token())
                 .andExpect(jsonPath("$.total_comissao_acumulada").value(37.50))
                 .andExpect(jsonPath("$.percentual_comissao").value(10.0));
+    }
+
+    @Test
+    @DisplayName("CT-CAN-007 Vendedor cancela a própria venda com a senha do gerente: estorno e gerente gravado como responsável")
+    void vendedorCancelaComSenha() throws Exception {
+        long venda = vender(2);
+        postar("/vendas/" + venda + "/cancelar", vendedor.token(), """
+                {"motivo_cancelamento": "Cliente desistiu no balcão.", "senha_autorizacao_gerente": "%s"}"""
+                .formatted(SENHA_GERENTE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADA"));
+        assertThat(estoqueDe(produto)).isEqualTo(15);
+        obter("/vendas/" + venda, vendedor.token())
+                .andExpect(jsonPath("$.usuario_cancelamento_id").value(idGerente));
+        String detalhes = jdbc.queryForObject(
+                "SELECT detalhes FROM logs_auditoria WHERE tipo_acao = 'CANCELAMENTO_VENDA' AND entidade_id = ?",
+                String.class, venda);
+        assertThat(detalhes).contains("Solicitado pelo vendedor ID " + vendedor.id())
+                .contains("autorizado pelo gerente ID " + idGerente);
+    }
+
+    @Test
+    @DisplayName("CT-CAN-008 Senha de gerente errada (403, auditada) e venda de outro vendedor (403): nada é cancelado")
+    void vendedorCancelaSemAutorizacao() throws Exception {
+        long venda = vender(2);
+        postar("/vendas/" + venda + "/cancelar", vendedor.token(), """
+                {"motivo_cancelamento": "Cliente desistiu no balcão.", "senha_autorizacao_gerente": "errada"}""")
+                .andExpect(status().isForbidden());
+        assertThat(contarAuditoria("AUTORIZACAO_FALHA")).isEqualTo(1);
+
+        Operador outro = criarVendedor("Outro vendedor", "5.0");
+        postar("/vendas/" + venda + "/cancelar", outro.token(), """
+                {"motivo_cancelamento": "Tentativa indevida.", "senha_autorizacao_gerente": "%s"}"""
+                .formatted(SENHA_GERENTE))
+                .andExpect(status().isForbidden());
+        obter("/vendas/" + venda, tokenGerente).andExpect(jsonPath("$.status").value("CONCLUIDA"));
+        assertThat(estoqueDe(produto)).isEqualTo(13);
     }
 
     private long vender(int quantidade) throws Exception {

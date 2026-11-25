@@ -21,9 +21,10 @@ public interface VendaRepository extends JpaRepository<Venda, Long>, JpaSpecific
             """)
     BigDecimal somarConcluidasDoCaixa(@Param("caixaId") Long caixaId);
 
+    /** Soma a parte paga na forma indicada (venda_pagamentos), inclusive em vendas com pagamento dividido. */
     @Query("""
-            select coalesce(sum(v.valorTotal), 0) from Venda v
-            where v.caixaId = :caixaId and v.modalidadePagamento = :modalidade
+            select coalesce(sum(p.valor), 0) from PagamentoVenda p join p.venda v
+            where v.caixaId = :caixaId and p.modalidadePagamento = :modalidade
               and v.status = br.com.empresa.pdv.venda.StatusVenda.CONCLUIDA
             """)
     BigDecimal somarConcluidasDoCaixaPorModalidade(@Param("caixaId") Long caixaId,

@@ -85,6 +85,7 @@ class VendaServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AuditoriaService auditoria;
     @Mock private LimitadorDeTentativas limitador;
+    @Mock private ConfiguracaoParcelamentoRepository parcelamentos;
 
     private VendaService service;
     private Usuario vendedor;
@@ -94,7 +95,8 @@ class VendaServiceTest {
     void preparar() {
         Clock fixo = Clock.fixed(Instant.parse("2026-09-13T17:30:00Z"), ZoneOffset.UTC);
         service = new VendaService(vendas, produtos, clientes, clienteService, usuarios, caixaService, cupomService,
-                passwordEncoder, auditoria, new Relogio(fixo, "America/Sao_Paulo"), limitador, BaseComissao.LIQUIDO);
+                passwordEncoder, auditoria, new Relogio(fixo, "America/Sao_Paulo"), limitador, BaseComissao.LIQUIDO,
+                parcelamentos);
 
         vendedor = new Usuario("52998224725", "Jean Wictor", "hash", Perfil.VENDEDOR, new BigDecimal("5.00"),
                 OffsetDateTime.now());
@@ -297,7 +299,7 @@ class VendaServiceTest {
         when(vendas.bloquear(50L)).thenReturn(Optional.of(venda));
         when(produtos.bloquearPorIds(anyCollection())).thenReturn(List.of(produto));
 
-        service.cancelar(50L, "  Desistência do cliente  ");
+        service.cancelar(50L, "  Desistência do cliente  ", null);
 
         assertThat(produto.getEstoqueAtual()).isEqualTo(8);
         assertThat(venda.isCancelada()).isTrue();
@@ -314,7 +316,7 @@ class VendaServiceTest {
         VendaTestes.cancelar(venda, "Primeiro", GERENTE_ID, OffsetDateTime.now());
         when(vendas.bloquear(51L)).thenReturn(Optional.of(venda));
 
-        assertThatThrownBy(() -> service.cancelar(51L, "Segundo"))
+        assertThatThrownBy(() -> service.cancelar(51L, "Segundo", null))
                 .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getTipo()).isEqualTo("venda-ja-cancelada"));
         verifyNoInteractions(produtos, auditoria);
     }
@@ -430,6 +432,6 @@ class VendaServiceTest {
 
     private static VendaRequisicao venda(BigDecimal descontoGerente, String senhaGerente, ItemRequisicao... itens) {
         return new VendaRequisicao(CAIXA_ID, null, null, descontoGerente, senhaGerente, ModalidadePagamento.PIX,
-                List.of(itens));
+                null, null, List.of(itens));
     }
 }

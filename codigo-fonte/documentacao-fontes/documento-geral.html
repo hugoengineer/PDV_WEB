@@ -298,16 +298,16 @@ com os requisitos funcionais é direta: UCnn ↔ RF-nn.</p>
     <span class="muted mono">/caixas/abertura · /caixas/atual · /{id}/sangria · /{id}/suprimento · /{id}/fechamento</span></div>
   <div class="card"><h5 style="margin-top:0">Registro de venda <span class="tag g">UC04 · UC05</span></h5>
     <ul><li>Vários itens; o mesmo produto repetido é somado</li><li>Cliente cadastrado ou "Consumidor Padrão"</li>
-    <li>Pagamento: Dinheiro, PIX, Cartão de Crédito, Cartão de Débito ou Crediário</li><li>Estoque validado e baixado na mesma transação; um item sem saldo cancela a venda inteira</li>
+    <li>Pagamento: Dinheiro, PIX, Cartão de Crédito, Cartão de Débito ou Crediário — dividido em até 10 formas, com soma exata ao centavo</li><li>Crédito e crediário em até 12x sem juros (máximo definido pelo gerente); observação opcional no pedido</li><li>Estoque validado e baixado na mesma transação; um item sem saldo cancela a venda inteira</li>
     <li>Preço sempre do catálogo (o enviado é ignorado)</li><li>Resposta traz alertas de estoque crítico</li></ul>
-    <span class="muted mono">POST /vendas · GET /vendas · GET /vendas/{id}</span></div>
+    <span class="muted mono">POST /vendas · POST /vendas/previa · GET /vendas · GET /vendas/{id} · /configuracoes/parcelamento</span></div>
   <div class="card"><h5 style="margin-top:0">Descontos <span class="tag g">UC06 · UC07 · UC14</span></h5>
     <ul><li>Cupom percentual ou de valor fixo, com período de validade</li><li>Desconto direto do gerente em R$ fixo</li>
     <li>Ordem: primeiro o cupom, depois o desconto direto sobre o restante</li><li>Vendedor precisa informar a senha de um gerente; o gerente que autorizou fica registrado</li>
     <li>O total nunca fica negativo</li></ul>
     <span class="muted mono">/cupons (CRUD) · campos cupom_codigo e desconto_direto_gerente na venda</span></div>
   <div class="card"><h5 style="margin-top:0">Cancelamento e estorno <span class="tag g">UC11</span></h5>
-    <ul><li>Exclusivo do gerente, com motivo obrigatório</li><li>Os itens voltam automaticamente ao estoque</li>
+    <ul><li>Gerente cancela direto; vendedor só a própria venda e com a senha de um gerente; motivo obrigatório</li><li>Os itens voltam automaticamente ao estoque</li>
     <li>A venda sai dos totais do caixa e das comissões</li><li>Venda cancelada não pode ser cancelada de novo</li>
     <li>Vendas são imutáveis: não existe edição nem exclusão</li></ul>
     <span class="muted mono">POST /vendas/{id}/cancelar</span></div>
@@ -334,11 +334,11 @@ com os requisitos funcionais é direta: UCnn ↔ RF-nn.</p>
 
 <!-- ============================================================ 5 ESPECIFICAÇÃO DOS CASOS DE USO -->
 <h2 class="secao pagina" id="s5" data-toc="0" data-num="5.">Especificação dos Casos de Uso</h2>
-<p class="lead">Especificação de cada um dos 16 casos de uso, com o comportamento, as regras de negócio e os fluxos de
+<p class="lead">Especificação de cada um dos 17 casos de uso, com o comportamento, as regras de negócio e os fluxos de
 interação entre os atores e o sistema.</p>
 <!--incluir:04-detalhamento-casos-de-uso#1 5-->
 <h3 id="s5-2" data-toc="1" data-num="5.2">Descrição detalhada dos casos de uso</h3>
-<!--fichas:04-detalhamento-casos-de-uso#UC01,UC02,UC03,UC04,UC05,UC06,UC07,UC08,UC09,UC10,UC11,UC12,UC13,UC14,UC15,UC16-->
+<!--fichas:04-detalhamento-casos-de-uso#UC01,UC02,UC03,UC04,UC05,UC06,UC07,UC08,UC09,UC10,UC11,UC12,UC13,UC14,UC15,UC16,UC17-->
 
 <h3 class="sub pagina" id="s5-3" data-toc="1" data-num="5.3">Perfis de Acesso</h3>
 <p>O sistema tem dois atores. O <b>Gerente</b> herda tudo o que o Vendedor faz e tem os privilégios administrativos.
@@ -356,9 +356,10 @@ As permissões são verificadas <b>duas vezes</b>: no filtro de segurança (ante
     <tr><td>Cadastrar, alterar e inativar produtos (ajuste de estoque)</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
     <tr><td>Emitir e alterar cupons</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
     <tr><td>Ver histórico de vendas e comissões</td><td class="c warn">só as próprias</td><td class="c ok">✔ todas</td></tr>
-    <tr><td>Cancelar venda (estorno ao estoque)</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Cancelar venda (estorno ao estoque)</td><td class="c warn">só as próprias, com senha do gerente</td><td class="c ok">✔</td></tr>
     <tr><td>Sangria e suprimento de caixa</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
-    <tr><td>Gerenciar funcionários e percentual de comissão</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Gerenciar funcionários: comissão, CPF (login), perfil e redefinição de senha</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
+    <tr><td>Configurar parcelamento sem juros (máximo por forma)</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
     <tr><td>Consultar LOG de auditoria</td><td class="c bad">✘</td><td class="c ok">✔</td></tr>
   </tbody>
 </table>
@@ -575,7 +576,8 @@ executado direto do navegador, informando o token JWT no botão <i>Authorize</i>
     <tr><td>Produtos</td><td><code>GET /produtos</code> · <code>GET /produtos/{id}</code> · <code>POST</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE</code></td><td>leitura: todos · escrita: Gerente</td></tr>
     <tr><td>Clientes</td><td><code>GET</code> · <code>POST</code> · <code>PUT</code> · <code>PATCH /clientes[/{id}]</code> · <code>DELETE /clientes/{id}</code></td><td>todos · exclusão: Gerente</td></tr>
     <tr><td>Cupons</td><td><code>GET /cupons[/{id}]</code> · <code>POST</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE</code></td><td>leitura: todos · escrita: Gerente</td></tr>
-    <tr><td>Vendas</td><td><code>POST /vendas</code> · <code>GET /vendas[/{id}]</code> · <code>GET /vendas/comissoes</code> · <code>POST /vendas/{id}/cancelar</code></td><td>todos · cancelar: Gerente</td></tr>
+    <tr><td>Vendas</td><td><code>POST /vendas</code> · <code>POST /vendas/previa</code> · <code>GET /vendas[/{id}]</code> · <code>GET /vendas/comissoes</code> · <code>POST /vendas/{id}/cancelar</code></td><td>todos · cancelar: Gerente, ou Vendedor (própria venda) com senha do gerente</td></tr>
+    <tr><td>Parcelamento</td><td><code>GET /configuracoes/parcelamento</code> · <code>PUT /configuracoes/parcelamento/{forma}</code></td><td>leitura: todos · alteração: Gerente</td></tr>
     <tr><td>Caixa</td><td><code>POST /caixas/abertura</code> · <code>GET /caixas/atual</code> · <code>GET /caixas/{id}</code> · <code>POST /caixas/{id}/fechamento</code> · <code>/sangria</code> · <code>/suprimento</code></td><td>todos · sangria/suprimento: Gerente</td></tr>
     <tr><td>Usuários</td><td><code>GET</code> · <code>POST</code> · <code>PUT</code> · <code>PATCH</code> · <code>DELETE /usuarios[/{id}]</code></td><td>Gerente</td></tr>
     <tr><td>Auditoria</td><td><code>GET /auditoria</code></td><td>Gerente</td></tr>
@@ -613,6 +615,7 @@ os defeitos encontrados corrigidos e a documentação atualizada. O backend conc
     <tr><td><b>1.1 — Robustez</b></td><td>Logout persistente, bloqueio de força bruta, HTTPS/HSTS, comissão configurável, aquecimento, modo demonstração, integração contínua</td><td class="ok">313/313 · mutação 100%</td></tr>
     <tr><td><b>1.2 — Banco e Docker</b></td><td>Gatilhos e CHECKs no banco, papéis sem DDL para a API, Docker Compose com backup e proxy TLS (Caddy), roteiro RT-DEP</td><td class="ok">320/320 · Docker validado</td></tr>
     <tr><td><b>2 — Front-end</b></td><td>Telas web do Vendedor e do Gerente servidas pela própria API em <code>/app</code>; roteiro de uso automatizado com print de cada passo (seção 9.4)</td><td class="ok">roteiro de uso aprovado</td></tr>
+    <tr><td><b>3 — Operação de loja</b></td><td>Frente de caixa (abrir/fechar caixa, pedido editável, pagamento dividido e parcelado sem juros, observação); cancelamento pelo vendedor com senha do gerente; ficha e edição completa de funcionários; configuração de parcelamento; aba Caixa só do gerente; cor própria do gerente e modo claro/escuro</td><td class="ok">migração V5 · 19 novos casos de teste</td></tr>
     <tr><td><b>Próximo</b></td><td>Implantação na AWS (instância, domínio, certificado Let's Encrypt) e teste de carga no ambiente real</td><td class="warn">pendente</td></tr>
   </tbody>
 </table>
@@ -670,14 +673,15 @@ mostrar o motivo de cada recusa.</p>
   <tbody>
     <tr><td>Login</td><td>Entrar com CPF e senha; sair (revoga o token)</td><td>todos</td><td><code>/auth/login</code> · <code>/auth/logout</code></td></tr>
     <tr><td>Início</td><td>Situação do caixa, vendas do turno, dinheiro em caixa, produtos com estoque crítico</td><td>todos</td><td><code>/caixas/atual</code> · <code>/produtos</code></td></tr>
-    <tr><td>Nova venda</td><td>Carrinho, cliente, cupom, desconto com senha do gerente, forma de pagamento</td><td>todos</td><td><code>POST /vendas</code></td></tr>
-    <tr><td>Vendas</td><td>Histórico; cancelamento com motivo</td><td>todos · cancelar: gerente</td><td><code>/vendas</code> · <code>/vendas/{id}/cancelar</code></td></tr>
-    <tr><td>Caixa</td><td>Abertura, sangria, suprimento e fechamento com conferência</td><td>todos · sangria/suprimento: gerente</td><td><code>/caixas/…</code></td></tr>
+    <tr><td>Frente de caixa</td><td>Abrir/fechar o próprio caixa; pedido com itens editáveis e removíveis e total recalculado a cada item; descartar pedido; cliente, cupom, desconto com senha do gerente; pagamento dividido em várias formas com parcelas sem juros e restante a pagar; observação; botão Finalizar no fim</td><td>todos</td><td><code>POST /vendas/previa</code> · <code>POST /vendas</code></td></tr>
+    <tr><td>Vendas</td><td>Histórico; detalhe com itens, pagamentos, parcelas e observação; cancelamento com motivo (vendedor: com senha do gerente)</td><td>todos</td><td><code>/vendas</code> · <code>/vendas/{id}/cancelar</code></td></tr>
+    <tr><td>Caixa</td><td>Resumo do turno, sangria, suprimento e fechamento com conferência</td><td>gerente</td><td><code>/caixas/…</code></td></tr>
     <tr><td>Produtos</td><td>Catálogo; cadastro de produtos</td><td>consulta: todos · cadastro: gerente</td><td><code>/produtos</code></td></tr>
     <tr><td>Clientes</td><td>Lista e cadastro de clientes PF/PJ</td><td>todos</td><td><code>/clientes</code></td></tr>
-    <tr><td>Cupons</td><td>Lista e cadastro de cupons</td><td>gerente</td><td><code>/cupons</code></td></tr>
+    <tr><td>Cupons</td><td>Criação de cupons (percentual ou valor fixo, com validade) e inativação; é como o vendedor dá desconto sem senha</td><td>gerente</td><td><code>/cupons</code></td></tr>
     <tr><td>Comissões</td><td>Total vendido e comissão por vendedor</td><td>vendedor: as próprias</td><td><code>/vendas/comissoes</code></td></tr>
-    <tr><td>Usuários</td><td>Lista e cadastro de funcionários</td><td>gerente</td><td><code>/usuarios</code></td></tr>
+    <tr><td>Funcionários</td><td>Lista e cadastro; ficha com dados, últimas vendas e comissão; edição de nome, CPF (login), perfil, comissão e senha; inativação</td><td>gerente</td><td><code>/usuarios</code> · <code>/vendas/comissoes</code></td></tr>
+    <tr><td>Configurações</td><td>Máximo de parcelas sem juros no crédito e no crediário</td><td>gerente</td><td><code>/configuracoes/parcelamento</code></td></tr>
     <tr><td>Auditoria</td><td>Últimas ações sensíveis registradas</td><td>gerente</td><td><code>/auditoria</code></td></tr>
   </tbody>
 </table>
@@ -788,6 +792,9 @@ Por ser automatizado, pode ser repetido a qualquer momento e os prints refletem 
 </table>
 
 <h3 class="sub pagina" id="s10-2" data-toc="1" data-num="10.2">Resultados da Execução</h3>
+<div class="info"><b>Ciclo 3 (25/11/2026):</b> <code>./mvnw clean verify</code> com <b>342 execuções e 0 falhas</b>, cobertura de 96,9% das linhas e 87,7% dos ramos.
+Os 19 casos novos estão no catálogo (seção 10.6, grupo 4.6.1 e CT-CAN-007/008, CT-USR-008 a 010) e o roteiro de uso pela interface passou de 29 para 35 passos, todos aprovados.
+A tabela abaixo mantém os números da execução oficial do Ciclo 1.2 para comparação.</div>
 <p>Execução oficial do Ciclo 1.2: 28/10/2026, <code>./mvnw clean verify</code>, 3 min 34 s, Windows 10 Pro, OpenJDK 25, Spring Boot 4.1.2 e PostgreSQL 17 embarcado.</p>
 <div class="grid4">
   <div class="kpi verde"><div class="v">320</div><div class="r">execuções · 0 falhas</div></div>
@@ -797,13 +804,13 @@ Por ser automatizado, pode ser repetido a qualquer momento e os prints refletem 
 </div>
 <h3>Evolução por ciclo</h3>
 <table>
-  <thead><tr><th>Indicador</th><th>Ciclo 1 (26/10)</th><th>Ciclo 1.1 — robustez (28/10)</th><th>Ciclo 1.2 — banco (28/10)</th></tr></thead>
+  <thead><tr><th>Indicador</th><th>Ciclo 1 (26/10)</th><th>Ciclo 1.1 — robustez (28/10)</th><th>Ciclo 1.2 — banco (28/10)</th><th>Ciclo 3 — operação de loja (25/11)</th></tr></thead>
   <tbody>
-    <tr><td>Casos distintos</td><td>211</td><td>248</td><td><b>255</b></td></tr>
-    <tr><td>Execuções aprovadas</td><td>265/265</td><td>313/313</td><td><b>320/320</b></td></tr>
-    <tr><td>Cobertura (linhas / ramos)</td><td>94,1% / 81,2%</td><td>96,8% / 87,6%</td><td><b>96,6% / 87,6%</b></td></tr>
-    <tr><td>Força de mutação</td><td>100% (11 classes)</td><td>100% (12 classes, 216 mutantes)</td><td>100%</td></tr>
-    <tr><td>Carga (20 simultâneos)</td><td>—</td><td>p95 281 ms · máx. 981 ms · 148 req/s</td><td><b>p95 190 ms · máx. 1.565 ms · 149 req/s</b></td></tr>
+    <tr><td>Casos distintos</td><td>211</td><td>248</td><td>255</td><td><b>+19 novos</b> (pagamentos, parcelamento, observação, cancelamento pelo vendedor, funcionários)</td></tr>
+    <tr><td>Execuções aprovadas</td><td>265/265</td><td>313/313</td><td>320/320</td><td><b>342/342</b></td></tr>
+    <tr><td>Cobertura (linhas / ramos)</td><td>94,1% / 81,2%</td><td>96,8% / 87,6%</td><td>96,6% / 87,6%</td><td><b>96,9% / 87,7%</b></td></tr>
+    <tr><td>Força de mutação</td><td>100% (11 classes)</td><td>100% (12 classes, 216 mutantes)</td><td>100%</td><td>não remedida</td></tr>
+    <tr><td>Carga (20 simultâneos)</td><td>—</td><td>p95 281 ms · máx. 981 ms · 148 req/s</td><td>p95 190 ms · máx. 1.565 ms · 149 req/s</td><td>não remedida</td></tr>
   </tbody>
 </table>
 <div class="grid2">

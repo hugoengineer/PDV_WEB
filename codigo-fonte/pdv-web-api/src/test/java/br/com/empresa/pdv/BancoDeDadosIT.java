@@ -58,11 +58,11 @@ class BancoDeDadosIT extends TesteIntegracao {
     }
 
     @Test
-    @DisplayName("CT-DB-006 Migrações Flyway aplicadas na ordem e sem falhas (V1 a V4)")
+    @DisplayName("CT-DB-006 Migrações Flyway aplicadas na ordem e sem falhas (V1 a V5)")
     void migracoes() {
         var versoes = jdbc.queryForList(
                 "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank", String.class);
-        assertThat(versoes).containsExactly("1", "2", "3", "4");
+        assertThat(versoes).containsExactly("1", "2", "3", "4", "5");
     }
 
     @Test

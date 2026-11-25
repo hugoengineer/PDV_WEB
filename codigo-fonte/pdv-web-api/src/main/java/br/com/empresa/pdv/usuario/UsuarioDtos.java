@@ -38,10 +38,15 @@ public final class UsuarioDtos {
             @Digits(integer = 3, fraction = 2, message = "Máximo de 2 casas decimais.") BigDecimal percentualComissao) {
     }
 
-    /** PATCH: somente os campos enviados são alterados. */
+    /**
+     * PATCH: somente os campos enviados são alterados. O gerente também pode trocar o CPF (login) e definir
+     * uma nova senha do funcionário; nesses dois casos as sessões abertas dele são encerradas.
+     */
     public record UsuarioPatch(
             @Size(min = 1, max = 100, message = "Deve ter entre 1 e 100 caracteres.") String nome,
             Perfil perfil,
+            String cpf,
+            @Size(min = 8, max = 72, message = "Deve ter entre 8 e 72 caracteres.") String novaSenha,
             @DecimalMin(value = "0.00", message = "Deve estar entre 0 e 100.")
             @DecimalMax(value = "100.00", message = "Deve estar entre 0 e 100.")
             @Digits(integer = 3, fraction = 2, message = "Máximo de 2 casas decimais.") BigDecimal percentualComissao) {

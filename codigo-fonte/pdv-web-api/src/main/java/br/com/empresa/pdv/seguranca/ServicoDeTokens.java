@@ -37,6 +37,7 @@ public class ServicoDeTokens {
                 .expiresAt(expiraEm)
                 .claim("nome", usuario.getNome())
                 .claim(ConfiguracaoSeguranca.CLAIM_PERFIL, usuario.getPerfil().name())
+                .claim(ConfiguracaoSeguranca.CLAIM_VERSAO_SESSAO, usuario.getVersaoSessao())
                 .build();
         String token = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
                 .getTokenValue();
